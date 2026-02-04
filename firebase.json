@@ -1,0 +1,56 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "banco-mobile-4d123",
+          "appId": "1:607942899331:android:1d02ea3ff5ed1590fb4db6",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "banco-mobile-4d123",
+          "configurations": {
+            "android": "1:607942899331:android:1d02ea3ff5ed1590fb4db6",
+            "ios": "1:607942899331:ios:c10f9e335a6fdbf7fb4db6",
+            "macos": "1:607942899331:ios:c10f9e335a6fdbf7fb4db6",
+            "web": "1:607942899331:web:18eed102700dc8d3fb4db6",
+            "windows": "1:607942899331:web:c8b1f9cb1297079afb4db6"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "prefix": "api",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
+      "source": "functions"
+    },
+    {
+      "codebase": "banco_mobile_functions",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "source": "functions"
+    }
+  ]
+}
