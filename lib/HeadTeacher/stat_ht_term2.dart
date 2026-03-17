@@ -4,6 +4,7 @@ import 'package:banco_mobile/Charts/stat_model.dart';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/HeadTeacher/StatTerm1/build_bot_view.dart';
 import 'package:banco_mobile/division_cal.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -320,12 +321,12 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return  Center(
       child: Padding(
         padding: EdgeInsets.only(top: 50.0),
         child: Column(
           children: [
-            CircularProgressIndicator(color: Colors.indigo),
+            CircularProgressIndicator(color: mainColor),
             SizedBox(height: 12),
             Text(
               'Loading student data...',
@@ -414,7 +415,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
         child: DropdownButton<String>(
           value: selectedSubject,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.indigo),
+          icon:  Icon(Icons.arrow_drop_down, color: mainColor),
           style: const TextStyle(fontSize: 16, color: Colors.black87),
           onChanged: (value) {
             setState(() {
@@ -444,7 +445,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       primaryYAxis: NumericAxis(
         title: AxisTitle(
           text: 'Number of Students',
-          textStyle: const TextStyle(color: Colors.indigo),
+          textStyle: TextStyle(color: mainColor),
         ),
         interval: 1,
         majorTickLines: const MajorTickLines(size: 0),
@@ -485,8 +486,8 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       plotAreaBorderWidth: 0, // Remove chart border
       primaryXAxis: CategoryAxis(
         title: AxisTitle(
-          text: 'Students (Ranked)',
-          textStyle: const TextStyle(color: Colors.indigo),
+          text: 'Students',
+          textStyle:  TextStyle(color: mainColor),
         ),
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
@@ -495,7 +496,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       primaryYAxis: NumericAxis(
         title: AxisTitle(
           text: 'BOT Score',
-          textStyle: const TextStyle(color: Colors.indigo),
+          textStyle:  TextStyle(color: mainColor),
         ),
         minimum: 0,
         maximum: 100, // Keep 100 as max score for standard view
@@ -532,8 +533,8 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       plotAreaBorderWidth: 0, // Remove chart border
       primaryXAxis: CategoryAxis(
         title: AxisTitle(
-          text: 'Students (Ranked)',
-          textStyle: const TextStyle(color: Colors.indigo),
+          text: 'Students',
+          textStyle:  TextStyle(color: mainColor),
         ),
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
@@ -542,7 +543,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       primaryYAxis: NumericAxis(
         title: AxisTitle(
           text: 'MID Score',
-          textStyle: const TextStyle(color: Colors.indigo),
+          textStyle:  TextStyle(color: mainColor),
         ),
         minimum: 0,
         maximum: 100, // Keep 100 as max score for standard view
@@ -579,8 +580,8 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       plotAreaBorderWidth: 0, // Remove chart border
       primaryXAxis: CategoryAxis(
         title: AxisTitle(
-          text: 'Students (Ranked)',
-          textStyle: const TextStyle(color: Colors.indigo),
+          text: 'Students',
+          textStyle:  TextStyle(color: mainColor),
         ),
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 0),
@@ -589,7 +590,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       primaryYAxis: NumericAxis(
         title: AxisTitle(
           text: 'END Score',
-          textStyle: const TextStyle(color: Colors.indigo),
+          textStyle:  TextStyle(color: mainColor),
         ),
         minimum: 0,
         maximum: 100, // Keep 100 as max score for standard view

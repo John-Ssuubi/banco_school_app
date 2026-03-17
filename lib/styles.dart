@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-Color mainColor = Colors.blue;
+Color mainColor = const Color.fromARGB(255, 2, 116, 63);
 double largefonts = 30;
 double normalFontSize = 20;
 
-var schoolname = Text('Banco School App');
+var schoolname = 'Banco School App';
+
+var whiteText = TextStyle(color: Colors.white);
 
 InputDecoration customDecorationParentForm({required String labelText}) {
     return InputDecoration(

@@ -1,28 +1,29 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, sized_box_for_whitespace
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/Charts/attendance_charts.dart';
 import 'package:banco_mobile/HeadTeacher/stat_ht.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class TeacherClassesStat extends StatefulWidget {
+class HeadteacherStat extends StatefulWidget {
   final List<dynamic>? classes;
   final String approve;
+  final String schoolId;
 
-  const TeacherClassesStat({
+  const HeadteacherStat({
     super.key,
     required this.classes,
-    required this.approve,
+    required this.approve, required this.schoolId,
   });
 
   @override
-  State<TeacherClassesStat> createState() => _TeacherClassesState();
+  State<HeadteacherStat> createState() => _HeadteacherState();
 }
 
-class _TeacherClassesState extends State<TeacherClassesStat> {
+class _HeadteacherState extends State<HeadteacherStat> {
   String? schoolId;
   List<Map<String, dynamic>>? schoolClasses = [];
 
@@ -78,89 +79,97 @@ class _TeacherClassesState extends State<TeacherClassesStat> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      
       appBar: AppBar(
-        actions: [
-          InkWell(
-            onTap: () {
-              logout(context);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Icon(Icons.logout),
-            ),
-          ),
-        ],
+        backgroundColor: mainColor,
+        // actions: [
+        //   InkWell(
+        //     onTap: () {
+        //       logout(context);
+        //     },
+        //     child: Padding(
+        //       padding: const EdgeInsets.all(8.0),
+        //       child: Icon(Icons.logout),
+        //     ),
+        //   ),
+        // ],
+         leading: InkWell(
+          child: Icon(Icons.arrow_back_outlined, color: Colors.white,),
+          onTap: () {
+            Navigator.pop(context);
+          },
+        ),
         title: const Text(
           "My Classes",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         elevation: 1,
       ),
-      floatingActionButton: Container(
-        // color: Colors.amber,
-        width: 70,
-        height: 70,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: FloatingActionButton(
-                onPressed: () {
-                  if (kDebugMode) {
-                    print('School ID: $schoolId');
+      // floatingActionButton: Container(
+      //   // color: Colors.amber,
+      //   width: 70,
+      //   height: 70,
+      //   child: Column(
+      //     children: [
+      //       Padding(
+      //         padding: const EdgeInsets.only(bottom: 8.0),
+      //         child: FloatingActionButton(
+      //           onPressed: () {
+      //             if (kDebugMode) {
+      //               print('School ID: $schoolId');
 
-                    print('School APPROVEEEEEEE: ${widget.approve}');
-                  }
+      //               print('School APPROVEEEEEEE: ${widget.approve}');
+      //             }
 
-                  if (widget.approve != 'true') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Waiting for admin to approve you.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (schoolId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please wait — loading school info...'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DailyAttendanceChart(
-                        schoolId: schoolId!,
-                        date: DateTime.now().toIso8601String().split('T').first,
-                      ),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(Icons.bar_chart),
-                ),
-              ),
-            ),
-            // FloatingActionButton(
-            //   onPressed: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => BarcodeHome()),
-            //     );
-            //   },
-            //   child: Padding(
-            //     padding: const EdgeInsets.all(8.0),
-            //     child: Icon(Icons.barcode_reader),
-            //   ),
-            // ),
-          ],
-        ),
-      ),
-      backgroundColor: Colors.grey[100],
+      //             if (widget.approve != 'true') {
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 const SnackBar(
+      //                   content: Text('Waiting for admin to approve you.'),
+      //                 ),
+      //               );
+      //               return;
+      //             }
+      //             if (schoolId == null) {
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 const SnackBar(
+      //                   content: Text('Please wait — loading school info...'),
+      //                 ),
+      //               );
+      //               return;
+      //             }
+      //             Navigator.push(
+      //               context,
+      //               MaterialPageRoute(
+      //                 builder: (context) => DailyAttendanceChart(
+      //                   schoolId: widget.schoolId,
+      //                   date: DateTime.now().toIso8601String().split('T').first,
+      //                 ),
+      //               ),
+      //             );
+      //           },
+      //           child: Padding(
+      //             padding: const EdgeInsets.all(8.0),
+      //             child: Icon(Icons.bar_chart),
+      //           ),
+      //         ),
+      //       ),
+      //       // FloatingActionButton(
+      //       //   onPressed: () {
+      //       //     Navigator.push(
+      //       //       context,
+      //       //       MaterialPageRoute(builder: (context) => BarcodeHome()),
+      //       //     );
+      //       //   },
+      //       //   child: Padding(
+      //       //     padding: const EdgeInsets.all(8.0),
+      //       //     child: Icon(Icons.barcode_reader),
+      //       //   ),
+      //       // ),
+      //     ],
+      //   ),
+      // ),
+      // backgroundColor: mainColor,
       // drawer: Drawer(
       //   child: Column(
       //     children: [
@@ -278,7 +287,7 @@ class _TeacherClassesState extends State<TeacherClassesStat> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      subtitle: const Text("Tap to view class statistics"),
+                      // subtitle: const Text("Tap to view class statistics"),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () {
                         Navigator.push(
@@ -286,7 +295,8 @@ class _TeacherClassesState extends State<TeacherClassesStat> {
                           MaterialPageRoute(
                             builder: (context) => StatHt(
                               model: classData['classModel'],
-                              schoolId: classData['schoolId'],
+                              // schoolId: classData['schoolId'],
+                              schoolId: widget.schoolId,
                             ),
                           ),
                         );

@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, sized_box_for_whitespace
 
 import 'package:banco_mobile/home.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -76,89 +77,27 @@ class _TeacherClassesState extends State<TeacherClasses> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        // actions: [
-        //   InkWell(
-        //     onTap: () {
-        //       logout(context);
-        //     },
-        //     child: Padding(
-        //       padding: const EdgeInsets.all(8.0),
-        //       child: Icon(Icons.logout),
-        //     ),
-        //   ),
-        // ],
-        title: const Text(
-          "My Classes",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 1,
-      ),
-      floatingActionButton: Container(
-        // color: Colors.amber,
-        width: 70,
-        height: 70,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: FloatingActionButton(
-                onPressed: () {
-                  if (kDebugMode) {
-                    print('School ID: $schoolId');
-
-                  print('School APPROVEEEEEEE: ${widget.approve}');
-                  }
-
-                   if (widget.approve != 'true') {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Waiting for admin to approve you.'),
-                      ),
-                    );
-                    return;
-                      }
-                  if (schoolId == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please wait — loading school info...'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DailyAttendanceChart(
-                        schoolId: schoolId!,
-                        date: DateTime.now().toIso8601String().split('T').first,
-                      ),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(Icons.bar_chart),
-                ),
-              ),
-            ),
-            FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => BarcodeHome()),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(Icons.barcode_reader),
-              ),
-            ),
-          ],
-        ),
-      ),
-      backgroundColor: Colors.grey[100],
+      // appBar: AppBar(
+      //   // actions: [
+      //   //   InkWell(
+      //   //     onTap: () {
+      //   //       logout(context);
+      //   //     },
+      //   //     child: Padding(
+      //   //       padding: const EdgeInsets.all(8.0),
+      //   //       child: Icon(Icons.logout),
+      //   //     ),
+      //   //   ),
+      //   // ],
+      //   title: const Text(
+      //     "My Classes",
+      //     style: TextStyle(fontWeight: FontWeight.bold),
+      //   ),
+      //   centerTitle: true,
+      //   elevation: 1,
+      // ),
+      
+      // backgroundColor: mainColor,
       // drawer: Drawer(
       //   child: Column(
       //     children: [
@@ -276,7 +215,7 @@ class _TeacherClassesState extends State<TeacherClasses> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      subtitle: const Text("Tap to view students"),
+                      // subtitle: const Text("Tap to view students"),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () {
                         Navigator.push(

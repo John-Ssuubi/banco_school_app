@@ -22,15 +22,7 @@ class _DailyAttendanceChartState extends State<DailyAttendanceChart> {
   late Future<Map<String, int>> _attendanceData;
 
   // Predefined classes from P1–P7 with initial count 0
-  final List<String> allClasses = [
-    'P1',
-    'P2',
-    'P3',
-    'P4',
-    'P5',
-    'P6',
-    'P7',
-  ];
+  final List<String> allClasses = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
 
   Future<Map<String, int>> getAttendanceData() async {
     final snapshot = await FirebaseFirestore.instance
@@ -41,14 +33,21 @@ class _DailyAttendanceChartState extends State<DailyAttendanceChart> {
         .collection('students')
         .get();
 
+    if (snapshot.docs.isEmpty) {
+      await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .collection('attendance')
+          .doc(widget.date)
+          .set({});
+    }
+
     if (kDebugMode) {
       print('Fetched ${snapshot.docs.length} students for ${widget.date}');
     }
 
     // Start with all classes set to 0
-    Map<String, int> classCounts = {
-      for (var c in allClasses) c: 0,
-    };
+    Map<String, int> classCounts = {for (var c in allClasses) c: 0};
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -132,26 +131,26 @@ class _DailyAttendanceChartState extends State<DailyAttendanceChart> {
                   yValueMapper: (AttendanceData data, _) => data.presentCount,
                   name: 'Present Students',
                   color: Colors.indigo,
-                  dataLabelSettings:
-                      const DataLabelSettings(isVisible: true),
+                  dataLabelSettings: const DataLabelSettings(isVisible: true),
                   borderRadius: const BorderRadius.all(Radius.circular(6)),
-                )
+                ),
               ],
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>  BarcodeScannerPage(schoolId: widget.schoolId),
-                      ),
-                    );
-                  },
-                  child: const Icon(Icons.barcode_reader),
-                ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  BarcodeScannerPage(schoolId: widget.schoolId),
+            ),
+          );
+        },
+        child: const Icon(Icons.barcode_reader),
+      ),
     );
   }
 }

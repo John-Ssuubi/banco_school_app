@@ -2,6 +2,7 @@
 
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/P4/student_p4.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -30,9 +31,16 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // backgroundColor: mainColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('Banco Mobile'),
+        leading: InkWell(
+          child: Icon(Icons.arrow_back_outlined, color: Colors.white,),
+          onTap: () {
+            Navigator.pop(context);
+          },
+        ),
+        backgroundColor: mainColor,
+        title: Text(schoolname, style: whiteText,),
       ),
        
       body: Column(

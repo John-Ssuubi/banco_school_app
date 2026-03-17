@@ -1,6 +1,7 @@
 import 'package:banco_mobile/P4/term_one.dart';
 import 'package:banco_mobile/P4/term_three.dart';
 import 'package:banco_mobile/P4/term_two.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:flutter/material.dart';
 
 class StudentP4 extends StatefulWidget {
@@ -31,17 +32,27 @@ class _StudentP4State extends State<StudentP4> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff6f7fb),
+      backgroundColor: mainColor,
       appBar: AppBar(
-        title: const Text(
-          'Banco Primary School',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        leading: InkWell(
+          child: Icon(Icons.arrow_back_rounded, color: Colors.white ,),
+          onTap: () {
+            Navigator.pop(context);
+          },
+        ),
+        title:  Text(
+          schoolname,
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         elevation: 0,
-        backgroundColor: Colors.indigo[600],
+        backgroundColor: mainColor,
       ),
       body: _termPages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        
+        backgroundColor: mainColor,
+        unselectedItemColor: const Color.fromARGB(255, 124, 124, 124),
+        selectedItemColor: Colors.white ,
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
@@ -49,7 +60,8 @@ class _StudentP4State extends State<StudentP4> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Term I'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.school,), label: 'Term I'),
           BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Term II'),
           BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Term III'),
         ],

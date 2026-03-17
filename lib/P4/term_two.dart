@@ -1,6 +1,7 @@
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/editable_score_field.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +18,7 @@ class _TermTwoState extends State<TermTwo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // backgroundColor: Colors.grey,
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection('Schools')
@@ -49,7 +51,7 @@ class _TermTwoState extends State<TermTwo> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.indigo[50],
+                        color: mainColor,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(40),
                           bottomRight: Radius.circular(40),
@@ -67,6 +69,7 @@ class _TermTwoState extends State<TermTwo> {
                                   style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.white
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -74,7 +77,7 @@ class _TermTwoState extends State<TermTwo> {
                                   'Class: ${student.classIn}  |  Year: ${DateTime.now().year}',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.grey[700],
+                                    color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -82,7 +85,7 @@ class _TermTwoState extends State<TermTwo> {
                                   'SID: ${student.idNin}',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
@@ -151,10 +154,10 @@ class _TermTwoState extends State<TermTwo> {
                                         SizedBox(
                                           width: 80,
                                           height: 40,
-                                          child: EditableScoreField(
+                                          child: EditableScoreFieldTerm2(
                                             model: widget.model,
                                             schoolId: widget.schoolId,
-                                            studentId: student.studentName!,
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreBOT,
                                             scoreKey: 'scoreBOT',
@@ -181,9 +184,9 @@ class _TermTwoState extends State<TermTwo> {
                                         SizedBox(
                                           width: 80,
                                           height: 40,
-                                          child: EditableScoreField(
-                                            model: widget.model   ,
-                                            studentId: student.studentName!,
+                                          child: EditableScoreFieldTerm2(
+                                            model:  widget.model   ,
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreMT,
                                             scoreKey: 'scoreMT',
@@ -210,8 +213,8 @@ class _TermTwoState extends State<TermTwo> {
                                         SizedBox(
                                           width: 80,
                                           height: 40,
-                                          child: EditableScoreField(
-                                            studentId: student.studentName!,
+                                          child: EditableScoreFieldTerm2(
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreEOT,
                                             scoreKey: 'scoreEOT',
@@ -239,10 +242,11 @@ class _TermTwoState extends State<TermTwo> {
 
                     // --- Footer Row ---
                     Container(
+                      height: 75,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.indigo[50],
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(35),
                       ),
                       margin: const EdgeInsets.all(16),
                       child: Row(
@@ -261,17 +265,17 @@ class _TermTwoState extends State<TermTwo> {
                                 gradeEotTerm2(student.subjectsScoreTerm2),
                                 style: const TextStyle(
                                   fontSize: 22,
-                                  color: Colors.indigo,
+                                  color: Colors.black,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon:  Icon(
                               Icons.download_rounded,
                               size: 30,
-                              color: Colors.indigo,
+                              color: mainColor,
                             ),
                             onPressed: () {
                               // TODO: Implement download

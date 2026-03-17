@@ -1,5 +1,6 @@
 import 'package:banco_mobile/Auth/create_account_headteacher.dart';
 import 'package:banco_mobile/Auth/create_account_teacher.dart';
+import 'package:banco_mobile/Auth/security_create_account.dart';
 import 'package:flutter/material.dart';
 
 class StaffSelect extends StatefulWidget {
@@ -57,7 +58,7 @@ class _StaffSelectState extends State<StaffSelect> {
               ),
             ),
             title: Text(
-              'Deputy Head Teacher',
+              'Adminstrator',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             subtitle: const Text("Access to all classes"),
@@ -82,7 +83,7 @@ class _StaffSelectState extends State<StaffSelect> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              subtitle: const Text("Access certain classes"),
+              subtitle: const Text("School Management"),
               trailing: const Icon(Icons.chevron_right_rounded),
             ),
             onTap: () {
@@ -92,23 +93,31 @@ class _StaffSelectState extends State<StaffSelect> {
               );
             },
           ),
-          ListTile(
-            leading: CircleAvatar(
-              // backgroundColor: ,
-              child: Text(
-                'S',
-                style: TextStyle(
-                  // color: theme.primaryColor,
-                  fontWeight: FontWeight.bold,
+          InkWell(
+            child: ListTile(
+              leading: CircleAvatar(
+                // backgroundColor: ,
+                child: Text(
+                  'S',
+                  style: TextStyle(
+                    // color: theme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+              title: Text(
+                'Security',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text("Attendance Tracking"),
+              trailing: const Icon(Icons.chevron_right_rounded),
             ),
-            title: Text(
-              'Security',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            subtitle: const Text("Attendance Tracking"),
-            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SecurityCreateAccount()),
+              );
+            },
           ),
         ],
       ),

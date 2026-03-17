@@ -7,6 +7,7 @@ import 'package:banco_mobile/parentFcmToken.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthStudent extends StatefulWidget {
   const AuthStudent({super.key});
@@ -16,165 +17,232 @@ class AuthStudent extends StatefulWidget {
 }
 
 class _AuthStudentState extends State<AuthStudent> {
-  
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String error = '';
+
+  String error = "";
+  bool isLoading = false;
+  bool _hidePassword = true;
 
   @override
-  Widget build(BuildContext context) {
-    return  Scaffold(
-      appBar:  AppBar(
-        title: Text("Banco Mobile"),
-      ),
-      body: ListView(children: [
-        Column(
-          //  mainAxisAlignment: MainAxisAlignment.,
-          children: [Text('LogIn', style: TextStyle(color: mainColor, fontSize: largefonts, fontWeight: FontWeight.bold),)
-          ,
-           Padding(
-             padding: const EdgeInsets.all(8.0),
-             child: TextField(
-                controller: _emailController,
-                decoration:  InputDecoration(labelText: 'Email',
-                  labelStyle: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: normalFontSize), // label color
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: mainColor,
-                    ), // border when not focused
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: mainColor,
-                    ), // border when focused
-                  ),
-                ),
-                 style: TextStyle(color: mainColor),
-              ),
-           ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                labelStyle: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: normalFontSize), 
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: mainColor,
-                    ), // border when not focused
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(
-                      color: mainColor,
-                    ), // border when focused
-                  ),
-                  labelText: 'Password', 
-                  
-                  ),
-              ),
-            ),
-           ElevatedButton(onPressed: () async {
- try {
-            await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-        setupFcm();
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyApp()));
-        } catch (e) {
-          setState(() {
-            error = e.toString(); 
-          });
-        }
-           }, child: Padding(
-             padding: const EdgeInsets.all(16.0),
-             child: Text('Log In', style: TextStyle(fontSize: normalFontSize),),
-           )),
-           SizedBox(height: 25,),
-           InkWell(
-            onTap: () {
-              showTextCard(context);
-              },
-            child: Text('Don\'t have an account? Sign Up')),
-            if (error.isNotEmpty)
-              Text(error, style: const TextStyle(color: Colors.red)),
-          ],
-        )
-      ],),
+  String _friendlyAuthMessage(String code) {
+    switch (code) {
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many attempts. Try again later.';
+      case 'network-request-failed':
+        return 'No internet connection.';
+      default:
+        return 'Login failed. Please try again.';
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+  try {
+    setState(() {
+      isLoading = true;
+      error = "";
+    });
+
+    final GoogleSignInAccount? googleUser =
+        await GoogleSignIn.standard().signIn();
+
+    if (googleUser == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    await FirebaseAuth.instance.signInWithCredential(credential);
+
+    await setupFcm();
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => MyApp()),
+    );
+  } on FirebaseAuthException catch (e) {
+    setState(() {
+      error = _friendlyAuthMessage(e.code);
+    });
+  } catch (e) {
+    setState(() {
+      error = "Google sign-in failed.";
+    });
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
+  }
+}
+
+  Future<void> login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      setState(() {
+        error = "Please enter email and password.";
+      });
+      return;
+    }
+
+
+    try {
+      setState(() {
+        isLoading = true;
+        error = "";
+      });
+
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      await setupFcm();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MyApp()),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        error = _friendlyAuthMessage(e.code);
+      });
+    } catch (_) {
+      setState(() {
+        error = "Something went wrong.";
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> forgotPassword() async {
+    TextEditingController emailReset = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reset Password"),
+        content: TextField(
+          controller: emailReset,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: "Enter your email",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: emailReset.text.trim(),
+                );
+
+                Navigator.pop(context);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Password reset email sent."),
+                  ),
+                );
+              } catch (_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Failed to send reset email."),
+                  ),
+                );
+              }
+            },
+            child: const Text("Send"),
+          ),
+        ],
+      ),
     );
   }
-  Future<void> showTextCard(BuildContext context) async {
-    return await showDialog(
+
+  Future<void> showAccountType() async {
+    return showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          // title: Text("Choose Service Provider", style: ),
-          actionsAlignment: MainAxisAlignment.spaceEvenly,
           backgroundColor: mainColor,
-          content: Container(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
+          content: SizedBox(
             height: 300,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 InkWell(
-                  child: Container(
-                    height: 120,
-                    width: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                     
-                    ),
-                    child: Icon(Icons.school, size: 80, color: Colors.white,),
-
-                  ),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CreateAccountParent(),
+                        builder: (_) => CreateAccountParent(),
                       ),
                     );
                   },
-                ),
-                const Text(
-                  "Parent",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  child: Column(
+                    children: const [
+                      Icon(Icons.school, size: 80, color: Colors.white),
+                      SizedBox(height: 10),
+                      Text(
+                        "Parent",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 InkWell(
-                  child: Container(
-                    height: 120,
-                    width: 120,
-                    decoration: BoxDecoration(
-                      color: mainColor,
-                  
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.people, size: 80, color: Colors.white,),
-                  ),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StaffSelect(),
+                        builder: (_) => StaffSelect(),
                       ),
                     );
                   },
-                ),
-
-                const Text(
-                  "Staff",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  child: Column(
+                    children: const [
+                      Icon(Icons.people, size: 80, color: Colors.white),
+                      SizedBox(height: 10),
+                      Text(
+                        "Staff",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -182,6 +250,154 @@ class _AuthStudentState extends State<AuthStudent> {
           ),
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: mainColor,
+        title: const Text(""),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Center(
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 270,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: mainColor,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(40),
+                      bottomRight: Radius.circular(40),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Welcome!",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 45,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style:  TextStyle(color: mainColor),
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: _hidePassword,
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _hidePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _hidePassword = !_hidePassword;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: 215,
+                  height: 60,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: mainColor,
+                    ),
+                    onPressed: login,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Log In",
+                            style: TextStyle(color: Colors.white, fontSize: 18),
+                          ),
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                 SizedBox(height: 20),
+              SizedBox(
+                height: 60,
+                child: OutlinedButton.icon(
+                  onPressed: signInWithGoogle,
+                  icon: Image.asset("assets/googlelogo.png", height: 22),
+
+                  label: const Text(
+                    "Sign in with Google",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    side: BorderSide(color: Colors.grey),
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ),
+
+                InkWell(
+                  onTap: showAccountType,
+                  child: const Text("Don't have an account? Sign Up"),
+                ),
+
+                const SizedBox(height: 10),
+
+                TextButton(
+                  onPressed: forgotPassword,
+                  child: const Text(
+                    "Forgot Password?",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+
+                if (error.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Text(
+                      error,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

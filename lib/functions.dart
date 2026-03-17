@@ -10,7 +10,8 @@ Future<void> addNotification(String uid, String schoolId, String title, String m
         'message': message,
         'senderId': uid,
         'timestamp': FieldValue.serverTimestamp(),
-        'status' : 'pending'
+        'status' : 'pending',
+        'type': 'Alerts'
       });
 }
 

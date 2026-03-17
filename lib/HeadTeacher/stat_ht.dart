@@ -2,6 +2,7 @@ import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/HeadTeacher/StatTerm1/stat_ht_term1.dart';
 import 'package:banco_mobile/HeadTeacher/stat_ht_term2.dart';
 import 'package:banco_mobile/HeadTeacher/stat_ht_term3.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -85,7 +86,7 @@ class _StatHtState extends State<StatHt>
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F9FC),
         appBar: AppBar(
-          backgroundColor: Colors.indigo[700],
+          backgroundColor: mainColor,
           elevation: 4,
           iconTheme: const IconThemeData(color: Colors.white),
           title: const Text(
@@ -96,6 +97,7 @@ class _StatHtState extends State<StatHt>
             ),
           ),
           bottom: const TabBar(
+            
             unselectedLabelColor: Colors.grey,
             labelColor: Colors.white,
             tabs: [

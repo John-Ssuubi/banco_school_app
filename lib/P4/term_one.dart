@@ -1,6 +1,8 @@
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
+import 'package:banco_mobile/PDF/pdf_term_one.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/editable_score_field.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -14,9 +16,40 @@ class TermOne extends StatefulWidget {
 }
 
 class _TermOneState extends State<TermOne> {
+  Future<void> resultsApproval() async {
+    final resultsRef = FirebaseFirestore.instance
+        .collection('Schools')
+        .doc(widget.schoolId)
+        .collection('results')
+        .doc('ResultsDoc');
+
+    final snapshot = await resultsRef.get();
+
+    if (!snapshot.exists) {
+      // Create once
+      await resultsRef.set({
+        "BOT": {"Term1": "draft", "Term2": "draft", "Term3": "draft"},
+        "MID": {"Term1": "draft", "Term2": "draft", "Term3": "draft"},
+        "EOT": {"Term1": "draft", "Term2": "draft", "Term3": "draft"},
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+    } else {
+      resultsRef.update({
+        "BOT": {"Term1": "draft"},
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    resultsApproval();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:  Colors.white,
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection('Schools')
@@ -49,7 +82,7 @@ class _TermOneState extends State<TermOne> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.indigo[50],
+                        color: mainColor,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(40),
                           bottomRight: Radius.circular(40),
@@ -65,6 +98,7 @@ class _TermOneState extends State<TermOne> {
                                 Text(
                                   student.studentName ?? 'No Name',
                                   style: const TextStyle(
+                                    color: Colors.white,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -74,7 +108,7 @@ class _TermOneState extends State<TermOne> {
                                   'Class: ${student.classIn}  |  Year: ${DateTime.now().year}',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.grey[700],
+                                    color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -82,7 +116,7 @@ class _TermOneState extends State<TermOne> {
                                   'SID: ${student.idNin}',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
@@ -154,7 +188,7 @@ class _TermOneState extends State<TermOne> {
                                           child: EditableScoreField(
                                             model: widget.model,
                                             schoolId: widget.schoolId,
-                                            studentId: student.studentName!,
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreBOT,
                                             scoreKey: 'scoreBOT',
@@ -182,12 +216,13 @@ class _TermOneState extends State<TermOne> {
                                           width: 80,
                                           height: 40,
                                           child: EditableScoreField(
-                                            model: widget.model   ,
-                                            studentId: student.studentName!,
+                                            model: widget.model,
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreMT,
                                             scoreKey: 'scoreMT',
-                                            time: 'MID', schoolId: widget.schoolId,
+                                            time: 'MID',
+                                            schoolId: widget.schoolId,
                                           ),
                                         ),
                                         Text(
@@ -211,11 +246,13 @@ class _TermOneState extends State<TermOne> {
                                           width: 80,
                                           height: 40,
                                           child: EditableScoreField(
-                                            studentId: student.studentName!,
+                                            studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreEOT,
                                             scoreKey: 'scoreEOT',
-                                            time: 'END', model: widget.model, schoolId: widget.schoolId,
+                                            time: 'END',
+                                            model: widget.model,
+                                            schoolId: widget.schoolId,
                                           ),
                                         ),
                                         Text(
@@ -239,10 +276,11 @@ class _TermOneState extends State<TermOne> {
 
                     // --- Footer Row ---
                     Container(
+                      height: 75,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.indigo[50],
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       margin: const EdgeInsets.all(16),
                       child: Row(
@@ -261,20 +299,63 @@ class _TermOneState extends State<TermOne> {
                                 gradeEot(student.subjectsScore),
                                 style: const TextStyle(
                                   fontSize: 22,
-                                  color: Colors.indigo,
+                                  color: Colors.black,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.download_rounded,
-                              size: 30,
-                              color: Colors.indigo,
-                            ),
-                            onPressed: () {
-                              // TODO: Implement download
+                          StreamBuilder(
+                            stream: FirebaseFirestore.instance
+                                .collection('Schools')
+                                .doc(widget.schoolId)
+                                .snapshots(),
+                            builder: (context, asyncSnapshot) {
+                              final data = asyncSnapshot.data;
+                              final schoolName = data != null
+                                  ? data['school_name'] ?? 'School'
+                                  : 'School';
+                              final contacts = data != null
+                                  ? data['contact'] ?? 'N/A'
+                                  : 'N/A';
+                              final address = data?['address'] ?? '';
+                              final moto = data?['moto'] ?? '';
+
+                              final pobox = data?['pobox'] ?? '';
+                              final email = data?['email'] ?? '';
+
+                              if (asyncSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const CircularProgressIndicator();
+                              }
+                              if (asyncSnapshot.hasError) {
+                                return Icon(  
+                                  Icons.error,
+                                  color: Colors.red,
+                                );
+                              }
+
+                              return IconButton(
+                                icon:  Icon(
+                                  Icons.download_rounded,
+                                  size: 30,
+                                  color: mainColor,
+                                ),
+                                onPressed: () async {
+                                  // TODO: Implement download
+                                  await ReportCardPdf.generate(
+                                    student: student,
+                                    schoolName: schoolName,
+                                    term: "Term I",
+                                    moto: moto,
+                                    address: address,
+                                    contacts: contacts,
+                                    pobox: pobox,
+                                    email: email,
+                                    year: DateTime.now().year,
+                                  );
+                                },
+                              );
                             },
                           ),
                         ],

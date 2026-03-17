@@ -1,9 +1,9 @@
 // ignore_for_file: use_build_context_synchronously
 
-import 'package:banco_mobile/Auth/teacher_form.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 class SettingsTeacher extends StatefulWidget {
@@ -14,7 +14,6 @@ class SettingsTeacher extends StatefulWidget {
 }
 
 class _SettingsTeacherState extends State<SettingsTeacher> {
-
   List<ClassesModel> classesList = [];
   List<ClassesModel> selectedClasses = [];
   String? selectedSchoolId;
@@ -23,215 +22,331 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
   final TextEditingController _secondNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
+  // ---------------- LOAD DATA ----------------
+
+  @override
+  void initState() {
+    super.initState();
+    loadTeacherData();
+  }
 
   Future<void> loadTeacherData() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final firestore = FirebaseFirestore.instance;
-  final doc = await firestore.collection('Users').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(user.uid)
+        .get();
 
-  if (doc.exists) {
+    if (!doc.exists) return;
+
     final data = doc.data()!;
     setState(() {
       _firstNameController.text = data['firstName'] ?? '';
       _secondNameController.text = data['secondName'] ?? '';
       _phoneController.text = data['phone'] ?? '';
-      selectedSchoolId = data['linkedClasses'] != null && data['linkedClasses'].isNotEmpty
-          ? data['linkedClasses'][0]['schoolId']
-          : null;
 
-      // Optional: load classes linked to teacher
-      if (selectedSchoolId != null) {
-        loadClassesFromSchool(selectedSchoolId!);
+      if (data['linkedClasses'] != null &&
+          (data['linkedClasses'] as List).isNotEmpty) {
+        selectedSchoolId = data['linkedClasses'][0]['schoolId'];
         selectedClasses = (data['linkedClasses'] as List)
             .map((c) => ClassesModel(
                   model: c['classModel'],
                   className: c['className'],
                 ))
             .toList();
+
+        loadClassesFromSchool(selectedSchoolId!);
       }
     });
   }
-}
 
+  // ---------------- CLASSES ----------------
 
-  // Save teacher with linked classes
-  Future<void> linkTeacherToClasses() async {
+  Future<void> loadClassesFromSchool(String schoolId) async {
+    setState(() {
+      classesList = [
+        ClassesModel(model: 'studentModelP1', className: 'P1'),
+        ClassesModel(model: 'studentModelP2', className: 'P2'),
+        ClassesModel(model: 'studentModelP3', className: 'P3'),
+        ClassesModel(model: 'studentModelP4', className: 'P4'),
+        ClassesModel(model: 'studentModelP5', className: 'P5'),
+        ClassesModel(model: 'studentModelP6', className: 'P6'),
+        ClassesModel(model: 'studentModelP7', className: 'P7'),
+      ];
+    });
+  }
+
+  // ---------------- SAVE ----------------
+
+  Future<void> saveTeacherSettings() async {
     final user = FirebaseAuth.instance.currentUser;
-    final firestore = FirebaseFirestore.instance;
+    if (user == null) return;
 
-    final linkedClasses = selectedClasses.map((classObj) {
+    final linkedClasses = selectedClasses.map((c) {
       return {
         "schoolId": selectedSchoolId,
-        "classModel": classObj.model,
-        "className": classObj.className,
+        "classModel": c.model,
+        "className": c.className,
       };
     }).toList();
 
-    await firestore.collection('Users').doc(user!.uid).set({
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(user.uid)
+        .set({
       'role': 'teacher',
       'firstName': _firstNameController.text.trim(),
       'secondName': _secondNameController.text.trim(),
       'phone': _phoneController.text.trim(),
       'linkedClasses': linkedClasses,
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ Linked ${linkedClasses.length} class(es) successfully!')),
+      const SnackBar(content: Text('✅ Settings saved successfully')),
     );
   }
 
+  // ---------------- LOGOUT ----------------
 
-  // Load all possible classes (static list)
-  Future<void> loadClassesFromSchool(String schoolId) async {
-    final possibleCollections = [
-      ClassesModel(model: 'studentModelP1', className: 'P1'),
-      ClassesModel(model: 'studentModelP2', className: 'P2'),
-      ClassesModel(model: 'studentModelP3', className: 'P3'),
-      ClassesModel(model: 'studentModelP4', className: 'P4'),
-      ClassesModel(model: 'studentModelP5', className: 'P5'),
-      ClassesModel(model: 'studentModelP6', className: 'P6'),
-      ClassesModel(model: 'studentModelP7', className: 'P7'),
-    ];
+  Future<void> logout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Logout"),
+          ),
+        ],
+      ),
+    );
 
-    setState(() {
-      classesList = possibleCollections;
-      selectedClasses.clear();
-    });
+    if (confirm != true) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .update({
+        'fcmToken': FieldValue.delete(),
+        'lastLogout': FieldValue.serverTimestamp(),
+      });
+    }
+
+    await FirebaseMessaging.instance.unsubscribeFromTopic("teachers");
+
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.clear();
+
+    await FirebaseAuth.instance.signOut();
+
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/login',
+      (route) => false,
+    );
   }
 
-@override
-void initState() {
-  super.initState();
-  loadTeacherData();
-}
+  // ---------------- UI HELPERS ----------------
 
-  @override
-  Widget build(BuildContext context) {
-    
-    return Scaffold(
-      appBar: AppBar(title: const Text("Banco Mobile")),
-      body: SingleChildScrollView(
+  Widget section(String title, Widget child) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Name & Phone Fields ---
-            TextFormField(
-              controller: _firstNameController,
-              decoration: customDecorationParentForm(labelText: 'First Name'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your first name' : null,
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _secondNameController,
-              decoration: customDecorationParentForm(labelText: 'Second Name'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your second name' : null,
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              keyboardType: TextInputType.phone,
-              controller: _phoneController,
-              decoration: customDecorationParentForm(labelText: 'Phone Number'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your phone number' : null,
-            ),
-
-            const SizedBox(height: 20),
-            Text(
-              "Choose the School",
-              style: TextStyle(
-                fontSize: normalFontSize,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // --- School Dropdown ---
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('Schools').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text('Error loading schools');
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Text('No schools found');
-                }
-
-                final schools = snapshot.data!.docs;
-
-                return DropdownButton<String>(
-                  isExpanded: true,
-                  hint: const Text("Select School"),
-                  value: selectedSchoolId,
-                  items: schools.map((school) {
-                    return DropdownMenuItem<String>(
-                      value: school.id,
-                      child: Text(school['school_name']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedSchoolId = value);
-                      loadClassesFromSchool(value);
-                    }
-                  },
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // --- Class List ---
-            if (classesList.isNotEmpty)
-              Container(
-                constraints: const BoxConstraints(maxHeight: 450),
-                color: Colors.amber[50],
-                child: ListView.builder(
-                  itemCount: classesList.length,
-                  itemBuilder: (context, index) {
-                    final classObj = classesList[index];
-                    final isSelected = selectedClasses.contains(classObj);
-                    return CheckboxListTile(
-                      title: Text(classObj.className),
-                      value: isSelected,
-                      onChanged: (bool? selected) {
-                        setState(() {
-                          if (selected == true) {
-                            selectedClasses.add(classObj);
-                          } else {
-                            selectedClasses.remove(classObj);
-                          }
-                        });
-                      },
-                    );
-                  },
-                ),
-              )
-            else
-              const Text('Select a school to view classes'),
-
-            const SizedBox(height: 20),
-
-            // --- Done Button ---
-            ElevatedButton(
-              onPressed: (selectedSchoolId != null && selectedClasses.isNotEmpty)
-                  ? linkTeacherToClasses
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text('Done', style: TextStyle(fontSize: normalFontSize)),
-              ),
-            ),
-            const SizedBox(height: 25),
+            Text(title,
+                style: TextStyle(
+                  fontSize: normalFontSize + 2,
+                  fontWeight: FontWeight.bold,
+                )),
+            const SizedBox(height: 12),
+            child,
           ],
         ),
       ),
     );
   }
+
+  // ---------------- UI ----------------
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: mainColor,
+      appBar: AppBar(
+        backgroundColor: mainColor,
+         leading: InkWell(
+          child: Icon(Icons.arrow_back_outlined, color: Colors.white,),
+          onTap: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: const Text("Settings", style: TextStyle(color: Colors.white),)),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // PROFILE
+            section(
+              "Profile",
+              Column(
+                children: [
+                  TextField(
+                    controller: _firstNameController,
+                    decoration:
+                        customDecorationParentForm(labelText: 'First Name'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _secondNameController,
+                    decoration:
+                        customDecorationParentForm(labelText: 'Second Name'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration:
+                        customDecorationParentForm(labelText: 'Phone Number'),
+                  ),
+                ],
+              ),
+            ),
+
+            // SCHOOL & CLASSES
+            section(
+              "School & Classes",
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('Schools')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const CircularProgressIndicator();
+                      }
+
+                      return DropdownButtonFormField<String>(
+                        value: selectedSchoolId,
+                        decoration: const InputDecoration(
+                          labelText: "School",
+                          border: OutlineInputBorder(),
+                        ),
+                        items: snapshot.data!.docs.map((school) {
+                          return DropdownMenuItem(
+                            value: school.id,
+                            child: Text(school['schoolId']),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              selectedSchoolId = val;
+                              selectedClasses.clear();
+                            });
+                            loadClassesFromSchool(val);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  ...classesList.map((c) {
+                    return CheckboxListTile(
+                      title: Text(c.className),
+                      value: selectedClasses.contains(c),
+                      onChanged: (val) {
+                        setState(() {
+                          val == true
+                              ? selectedClasses.add(c)
+                              : selectedClasses.remove(c);
+                        });
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            // ACCOUNT
+            section(
+              "Account",
+              Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.lock),
+                    title: const Text("Reset Password"),
+                    onTap: () {
+                      FirebaseAuth.instance.sendPasswordResetEmail(
+                        email: FirebaseAuth
+                            .instance.currentUser!.email!,
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                                Text("Password reset email sent")),
+                      );
+                    },
+                  ),
+                  // const Divider(),
+                  // ListTile(
+                  //   leading:
+                  //       const Icon(Icons.logout, color: Colors.red),
+                  //   title: const Text(
+                  //     "Logout",
+                  //     style: TextStyle(color: Colors.red),
+                  //   ),
+                  //   onTap: () => logout(context),
+                  // ),
+                ],
+              ),
+            ),
+
+            ElevatedButton(
+              onPressed: saveTeacherSettings,
+              child: const Padding(
+                padding: EdgeInsets.all(14),
+                child: Text("Save Changes"),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------- MODEL ----------------
+
+class ClassesModel {
+  final String model;
+  final String className;
+
+  ClassesModel({required this.model, required this.className});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ClassesModel &&
+          runtimeType == other.runtimeType &&
+          model == other.model;
+
+  @override
+  int get hashCode => model.hashCode;
 }

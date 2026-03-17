@@ -18,89 +18,12 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: schoolname,
-        actions: [
-          Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Builder(
-                  builder: (context) {
-                    int notificationCount = 5;
-
-                    return InkWell(
-                      child: Stack(
-                        clipBehavior: Clip.none, // allows badge to overflow
-                        children: [
-                          Icon(Icons.message, size: 30, color: Colors.black),
-                          if (notificationCount != 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    notificationCount > 99
-                                        ? '99+'
-                                        : '$notificationCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      onTap: () {},
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
+         leading: InkWell(child: Icon(Icons.arrow_back_rounded, color: Colors.white,),),
+        backgroundColor: mainColor,
+        title: Text(schoolname, style: TextStyle(color: Colors.white),),
+        centerTitle: true,
       ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            const UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Colors.indigo),
-              accountName: Text('Banco Admin'),
-              accountEmail: Text('admin@banco.edu'),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Icon(Icons.school, size: 45, color: Colors.indigo),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => Navigator.pop(
-                context,
-                // MaterialPageRoute(builder: (context) => const HomePage()),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
+      
 
       body: StreamBuilder(
         stream: widget.snp,
@@ -109,7 +32,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Error'));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No students found.'));
@@ -130,7 +53,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.indigo[50],
+                        color: mainColor,
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(40),
                           bottomRight: Radius.circular(40),
@@ -147,6 +70,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                   student.studentName ?? 'No Name',
                                   style: const TextStyle(
                                     fontSize: 24,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -155,7 +79,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                   'Class: ${student.classIn}  |  Year: ${DateTime.now().year}',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Colors.grey[700],
+                                    color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -163,7 +87,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                   'SID: ${student.id}',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[600],
+                                    color: Colors.white
                                   ),
                                 ),
                               ],

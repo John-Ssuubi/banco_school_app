@@ -5,83 +5,43 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-export const sendSchoolNotification = onDocumentCreated(
-  "Schools/{schoolId}/notifications/{notificationId}",
+export const sendUserInboxNotification = onDocumentCreated(
+  "Users/{userId}/inbox/{messageId}",
   async (event) => {
     const snap = event.data;
-    if (!snap) {
-      console.log("No data associated with the event");
-      return;
-    }
+    if (!snap) return;
 
     const data = snap.data();
-    if (!data) {
+    if (!data) return;
+
+    const userId = event.params.userId;
+
+    const title = data.title || "New Message";
+    const body = data.body || "";
+    const token = data.fcmToken;
+
+    if (!token) {
+      console.log("No FCM token for user:", userId);
       return;
     }
 
-    const schoolId = event.params.schoolId;
-
-    const title = data.title || "New School Notification";
-    const message = data.body || "";
-
     try {
-      const parentsSnap = await admin
-        .firestore()
-        .collection("Schools")
-        .doc(schoolId)
-        .collection("students")
-        .where("parentFcmToken", "!=", "")
-        .get();
-
-      const tokens = Array.from(
-        new Set(
-          parentsSnap.docs
-            .map((doc) => doc.data().parentFcmToken)
-            .filter(Boolean)
-        )
-      ) as string[];
-
-      if (tokens.length === 0) {
-        console.log("No tokens found for school:", schoolId);
-        return;
-      }
-
-      const basePayload = {
+      await admin.messaging().send({
+        token,
         notification: {
           title,
-          body: message,
+          body,
         },
         data: {
-          schoolId,
-          type: "school_notification",
+          schoolId: data.schoolId ?? "",
+          studentId: data.studentId ?? "",
+          type: "inbox",
         },
-      };
+      });
 
-      const chunkSize = 500;
-      const tokenChunks: string[][] = [];
-
-      for (let i = 0; i < tokens.length; i += chunkSize) {
-        tokenChunks.push(tokens.slice(i, i + chunkSize));
-      }
-
-      await Promise.all(
-        tokenChunks.map(async (chunk) => {
-          const response = await admin.messaging().sendEachForMulticast({
-            tokens: chunk,
-            ...basePayload,
-          });
-
-          console.log(
-            "Batch sent:",
-            response.successCount,
-            "success,",
-            response.failureCount,
-            "failed"
-          );
-        })
-      );
+      console.log("Inbox notification sent to user:", userId);
     } catch (error) {
-      console.error("Error in sendSchoolNotification:", error);
+      console.error("Error sending inbox notification:", error);
     }
   }
 );

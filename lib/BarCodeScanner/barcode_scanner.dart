@@ -1,5 +1,5 @@
-import 'package:banco_mobile/Notifications/firebase_notification.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -38,121 +38,129 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     }
   }
 
-   final today =
-          "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
-
+  final today =
+      "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
 
   Future<void> _handleScannedId(String scannedId) async {
-      if (_isProcessing) return;
-      setState(() => _isProcessing = true);
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
 
-      try {
-        final cleanId = scannedId.trim().replaceAll('\n', '');
+    try {
+      final cleanId = scannedId.trim().replaceAll('\n', '');
 
-        final possibleCollections = [
-          'studentModelP1',
-          'studentModelP2',
-          'studentModelP3',
-          'studentModelP4',
-          'studentModelP5',
-          'studentModelP6',
-          'studentModelP7',
-        ];
+      if (kDebugMode) {
+        print(widget.schoolId);
+      }
 
-        DocumentSnapshot? foundStudent;
-        String? foundCollection;
+      final schoolRef = FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId);
 
-        /// 🔍 Search student in all classes
-        for (final collectionName in possibleCollections) {
-          final query = await FirebaseFirestore.instance
-              .collection('Schools')
-              .doc(widget.schoolId)
-              .collection(collectionName)
-              .where('idNin', isEqualTo: cleanId)
-              .limit(1)
-              .get();
+      /// 1️⃣ FAST LOOKUP (studentIndex)
+      final indexSnap = await schoolRef
+          .collection('studentIndex')
+          .doc(cleanId)
+          .get();
 
-          if (query.docs.isNotEmpty) {
-            foundStudent = query.docs.first;
-            foundCollection = collectionName;
-            break;
-          }
-        }
+      if (!indexSnap.exists) {
+        _showMessage("No student found for this ID.");
+        return;
+      }
 
-        if (foundStudent == null) {
-          _showMessage("No student found for this ID.");
-          return;
-        }
+      final indexData = indexSnap.data()!;
+      final String classCollection = indexData['classCollection'];
+      final String studentDocId = indexData['studentDocId'];
 
-        /// ✅ SAFE DATA ACCESS
-        final data = foundStudent.data() as Map<String, dynamic>;
+      if (kDebugMode) {
+        print('Class Collection: $classCollection, Student Doc ID: $studentDocId');
+      }
 
-        final studentName = data['studentName'] ?? 'Unknown';
-        final classIn = data['classIn'] ?? '';
-        final String parentFcmToken =
-            (data['parentFcmToken'] ?? '').toString();
+      /// 2️⃣ FETCH STUDENT (single read)
+      final studentSnap = await schoolRef
+          .collection(classCollection)
+          .doc(studentDocId)
+          .get();
 
-      
-        final attendanceRef = FirebaseFirestore.instance
-            .collection('Schools')
-            .doc(widget.schoolId)
-            .collection('attendance')
-            .doc(today)
-            .collection('students')
-            .doc(foundStudent.id);
+      if (!studentSnap.exists) {
+        _showMessage("Student record missing.");
+        return;
+      }
 
-            final notificationRef = FirebaseFirestore.instance
-            .collection('Schools').doc(widget.schoolId).collection('notifications').doc();
+      final data = studentSnap.data()!;
+      final studentName = data['studentName'] ?? 'Unknown';
+      final classIn = data['classIn'] ?? '';
+      final String parentFcmToken = (data['parentFcmToken'] ?? '').toString();
+      final String parentUid = data['parentUid'] ?? '';
 
-        final attendanceSnap = await attendanceRef.get();
+      final today = DateTime.now().toIso8601String().split('T').first;
 
-        if (attendanceSnap.exists) {
-          _showMessage("$studentName is already marked present today.");
-          return;
-        }
+      // final notificationRef = schoolRef
+      //     .collection('notifications')
+      //     .doc();
 
-        /// 💾 Save attendance
-        await attendanceRef.set({
-          'studentName': studentName,
-          'idNin': cleanId,
-          'classCollection': foundCollection,
-          'classIn': classIn,
-          'timeIn': DateTime.now(),
-          'status': 'present',
-          'parentFcmToken': parentFcmToken,
-        });
+      // final notificationRef = FirebaseFirestore.instance
+      //     .collection('Users')
+      //     .doc(parentUid)
+      //     .collection('inbox')
+      //     .doc();
 
-        _showMessage("$studentName marked present.");
+      final attendanceRef = schoolRef
+          .collection('attendance')
+          .doc(today)
+          .collection('students')
+          .doc(cleanId);
 
-      /// 📝 Log notification in Firestore
+      /// 3️⃣ IDEMPOTENT ATTENDANCE WRITE (NO READ)
+      await attendanceRef.set({
+        'studentName': studentName,
+        'idNin': cleanId,
+        'classCollection': classCollection,
+        'classIn': classIn,
+        'timeIn': FieldValue.serverTimestamp(),
+        'status': 'present',
+        'schoolFrom': widget.schoolId,
+        'parentFcmToken': parentFcmToken,
+      }, SetOptions(merge: true));
+
+      _showMessage("$studentName marked present.");
+
+      /// 4️⃣ LOG NOTIFICATION (Cloud Function can listen here)
+      if (parentUid.isNotEmpty) {
+        final notificationRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(parentUid)
+            .collection('inbox')
+            .doc();
+
         await notificationRef.set({
           'title': 'Attendance',
-          'message': '$studentName has arrived at school',
-          'timestamp': DateTime.now(),
-          'studentId': foundStudent.id,
+          'body': '$studentName has arrived at school',
+          'timestamp': FieldValue.serverTimestamp(),
+          'studentId': cleanId,
           'studentName': studentName,
+          'schoolFrom': widget.schoolId,
+          'status': 'pending',
+          'fcmToken': parentFcmToken,
+          'type': 'Attendance',
         });
-
-      /// 🔔 Send notification ONLY if token exists
-      if (parentFcmToken.isNotEmpty) {
-        sendNotification(
-          // ignore: use_build_context_synchronously
-          context: context,
-          title: 'Attendance',
-          body: '$studentName has arrived at school',
-          token: parentFcmToken,
-        );
       } else {
-        _showMessage("Attendance saved (no parent notification).");
+        debugPrint('⚠️ parentUid missing for student $cleanId');
       }
+
+      // if (parentFcmToken.isNotEmpty) {
+      //   sendNotification(
+      //     context: context,
+      //     title: 'Attendance',
+      //     body: '$studentName has arrived at school',
+      //     token: parentFcmToken,
+      //   );
+      // }
     } catch (e) {
       _showMessage("Error: $e");
     } finally {
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          setState(() => _isProcessing = false);
-        }
-      });
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
@@ -189,8 +197,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
                       padding: const EdgeInsets.all(16),
                       child: Text(
                         "Scanned Code: $barcodeValue",
-                        style:
-                            const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -201,11 +208,13 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.camera_alt_outlined,
-                      size: 64, color: Colors.grey),
+                  const Icon(
+                    Icons.camera_alt_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 16),
-                  const Text(
-                      "Camera permission is required to scan."),
+                  const Text("Camera permission is required to scan."),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _checkCameraPermission,

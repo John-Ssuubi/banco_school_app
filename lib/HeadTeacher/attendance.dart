@@ -1,3 +1,4 @@
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -83,8 +84,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
 
     return Scaffold(
+      
       appBar: AppBar(
-        title: Text("$formattedDate - $length present"),
+        leading: InkWell(child: Icon(Icons.arrow_back, color: Colors.white,), onTap: () {
+          Navigator.pop(context);
+        },),
+        backgroundColor: mainColor,
+        title: Text("$formattedDate - $length present", style: TextStyle(color: Colors.white),),
       ),
       body: loadingDates
           ? const Center(child: CircularProgressIndicator())
@@ -238,33 +244,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                 ),
                               );
                             },
-                            child: ListTile(
-                              leading: Icon(
-                                s['status'] == "present"
-                                    ? Icons.check_circle
-                                    : Icons.cancel,
-                                color:
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Container(
+                                color: mainColor,
+                                child: ListTile(
+                                  leading: Icon(
                                     s['status'] == "present"
-                                        ? Colors.green
-                                        : Colors.red,
-                              ),
-                              title:
-                                  Text(s["studentName"]),
-                              subtitle: Text(
-                                  "Class: ${s['classIn']}"),
-                              trailing: timeIn != null
-                                  ? Text(
-                                      "In: ${DateFormat('hh:mm a').format(timeIn)}",
-                                      style: TextStyle(
-                                        color: s['status'] ==
-                                                "present"
-                                            ? Colors.green
+                                        ? Icons.check_circle
+                                        : Icons.cancel,
+                                    color:
+                                        s['status'] == "present"
+                                            ? Colors.white
                                             : Colors.red,
-                                        fontWeight:
-                                            FontWeight.bold,
-                                      ),
-                                    )
-                                  : null,
+                                  ),
+                                  title:
+                                      Text(s["studentName"], style: TextStyle(color: Colors.white),),
+                                  subtitle: Text(
+                                      "Class: ${s['classIn']}", style: TextStyle(color: Colors.white)),
+                                  trailing: timeIn != null
+                                      ? Text(
+                                          "In: ${DateFormat('hh:mm a').format(timeIn)}",
+                                          style: TextStyle(
+                                            color: s['status'] ==
+                                                    "present"
+                                                ? Colors.green
+                                                : Colors.red,
+                                            fontWeight:
+                                                FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
                             ),
                           );
                         },

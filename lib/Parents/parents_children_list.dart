@@ -1,22 +1,23 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:banco_mobile/Auth/auth_student.dart';
+import 'package:banco_mobile/HeadTeacher/about_school.dart';
+import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/Parents/ChildAttendance/pick_child.dart';
-import 'package:banco_mobile/Parents/calender.dart';
+import 'package:banco_mobile/Events/events_first_screen.dart';
 import 'package:banco_mobile/Parents/children_results.dart';
 import 'package:banco_mobile/Parents/nottifications.dart';
+import 'package:banco_mobile/Teachers/SettingsTeacher/settings_teacher.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ParentsChildrenList extends StatefulWidget {
   final String approve;
-  // final String schoolId;
-  const ParentsChildrenList({
-    super.key,
-    required this.approve,
-    // required this.schoolId,
-  });
+  final String schoolname;
+
+  const ParentsChildrenList({super.key, required this.approve, required this.schoolname});
 
   @override
   State<ParentsChildrenList> createState() => _ParentsChildrenListState();
@@ -25,77 +26,217 @@ class ParentsChildrenList extends StatefulWidget {
 class _ParentsChildrenListState extends State<ParentsChildrenList> {
   int currentIndex = 0;
 
-  // Define a primary color for consistent branding
   final Color primaryColor = const Color(0xFF2E3E5C); // Dark Blue/Slate
   final Color accentColor = const Color(0xFF1E88E5); // Bright Blue
 
-  int notificationCount = 0;
-
-  void notificationCountUpdate() async {
-    var user = FirebaseAuth.instance.currentUser!.uid;
-    var snap = await FirebaseFirestore.instance
-        .collection('Users').doc(user)
-        .collection('notifications')
-        .where('status', isEqualTo: 'pending').get();
-
-        setState(() {
-      notificationCount = snap.docs.length;
-        });
-  }
-
-  Future<void> logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const AuthStudent()),
-      (route) => false,
-    );
-  }
-
-@override
-  void initState() {
-    super.initState();
-    notificationCountUpdate();
-  }
-  
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     return Scaffold(
-      // 1. Light grey background to make content cards pop
-      backgroundColor: Colors.grey[100],
+      drawer: StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('Users')
+            .doc(FirebaseAuth.instance.currentUser!.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const SizedBox();
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+
+          final firstName = data['firstName'] ?? '';
+          final secondName = data['secondName'] ?? '';
+          final role = data['role'] ?? '';
+          final schoolId = data['schoolId'] ?? '';
+
+          return Drawer(
+            backgroundColor: Colors.white,
+            // width: double.infinity - 20,
+            child: Column(
+              children: [
+                UserAccountsDrawerHeader(
+                  decoration: BoxDecoration(color: mainColor),
+                  accountName: Text(
+                    "$firstName $secondName",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  accountEmail: Text(
+                    role.toUpperCase(), // e.g HEADTEACHER / TEACHER
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  currentAccountPicture: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, size: 45, color: mainColor),
+                  ),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.home),
+                  title: const Text('Home'),
+                  onTap: () => Navigator.pop(
+                    context,
+                    // MaterialPageRoute(builder: (context) => const HomePage())
+                  ),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Settings'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingsTeacher()),
+                  ),
+                ),
+                // Text(
+                //   'Account',
+                //   style: TextStyle(
+                //     fontSize: 20,
+                //     fontWeight: FontWeight.bold,
+                //     color: mainColor,
+                //   ),
+                // ),
+                InkWell(
+                  onTap: () {
+                    logout(context);
+                  },
+                  child: ListTile(
+                    leading: Icon(Icons.logout),
+                    title: const Text('Logout'),
+                  ),
+                ),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      // .where(
+                      //   'Banco Primary Schools',
+                      //   isEqualTo: 'Banco Primary Schools',
+                      // )
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox();
+                    }
+
+                    final data = snapshot.data;
+
+                    final schoolName = data?['school_name'];
+                    final contact = data?['contact'] ?? '';
+                    final address = data?['address'] ?? '';
+                    final moto = data?['moto'] ?? '';
+                    final pobox = data?['pobox'] ?? '';
+                    final email = data?['email'] ?? '';
+                    final subscription = data?['subscription'] ?? '';
+                    final d1Start = data?['D1Start'] ?? 0;
+                    final d1End = data?['D1End'] ?? 0;
+                    final d2Start = data?['D2Start'] ?? 0;
+                    final d2End = data?['D2End'] ?? 0;
+                    final c3Start = data?['c3Start'] ?? 0;
+                    final c3End = data?['c3End'] ?? 0;
+                    final c4Start = data?['c4Start'] ?? 0;
+                    final c4End = data?['c4End'] ?? 0;
+                    final c5Start = data?['c5Start'] ?? 0;
+                    final c5End = data?['c5End'] ?? 0;
+                    final c6Start = data?['c6Start'] ?? 0;
+                    final c6End = data?['c6End'] ?? 0;
+                    final p7Start = data?['p7Start'] ?? 0;
+                    final p7End = data?['p7End'] ?? 0;
+                    final p8Start = data?['p8Start'] ?? 0;
+                    final p8End = data?['p8End'] ?? 0;
+                    final f9Start = data?['f9Start'] ?? 0;
+                    final f9End = data?['f9End'] ?? 0;
+                    final staffMembers = data?['staffMembers'] ?? {};
+                    final List<StaffMember> staffMembersList = staffMembers
+                        .values
+                        .map<StaffMember>(
+                          (memberData) => StaffMember(
+                            firstName: memberData['firstName'] ?? '',
+                            secondName: memberData['secondName'] ?? '',
+                            role: memberData['role'] ?? '',
+                            phone: memberData['phone'] ?? '',
+                          ),
+                        )
+                        .toList();
+
+                    final linkedParentsData = data?['linkedParents'] ?? {};
+
+                    final List<LinkedParent> linkedParentsList =
+                        linkedParentsData.values.map<LinkedParent>(
+                          (parentData) => LinkedParent(
+                           
+                            parentName: parentData['firstName'] ?? '',
+                             fcmToken: parentData['fcmToken'] ?? '',
+                          ),
+                        ).toList();
+
+                    // final role = data['role'] ?? '';
+
+                    return ListTile(
+                      leading: const Icon(Icons.info),
+                      title: const Text('About School'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AboutSchool(
+                            schoolName: schoolName,
+                            pobox: pobox,
+                            address: address,
+                            moto: moto,
+                            contact: contact,
+                            email: email,
+                            subscription: subscription,
+                            d1Start: d1Start,
+                            d1End: d1End,
+                            d2Start: d2Start,
+                            d2End: d2End,
+                            c3Start: c3Start,
+                            c3End: c3End,
+                            c4Start: c4Start,
+                            c4End: c4End,
+                            c5Start: c5Start,
+                            c5End: c5End,
+                            c6Start: c6Start,
+                            c6End: c6End,
+                            p7Start: p7Start,
+                            p7End: p7End,
+                            p8Start: p8Start,
+                            p8End: p8End,
+                            f9Start: f9Start,
+                            f9End: f9End,
+                            staffMembers: staffMembersList,
+                            linkedParents: linkedParentsList,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      // backgroundColor: mainColor,`
 
       appBar: AppBar(
-        backgroundColor: Colors.grey[100],
-        elevation: 0, // Removes the shadow for a cleaner look
+        backgroundColor: mainColor,
+        elevation: 0,
         centerTitle: true,
         title: Text(
-          "Smart Schools App",
+          schoolname,
           style: TextStyle(
-            color: primaryColor,
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
         ),
-        iconTheme: IconThemeData(color: primaryColor),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(50),
-              onTap: () => logout(context),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Icon(Icons.logout, color: Colors.red[400]),
-              ),
-            ),
-          ),
-        ],
+        iconTheme: IconThemeData(color: Colors.white),
+      
       ),
 
       body: _getSelectedView(),
 
-      // 2. Custom Container to style the Bottom Nav Bar
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -108,18 +249,17 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
               color: Colors.grey.withOpacity(0.2),
               spreadRadius: 5,
               blurRadius: 10,
-              offset: const Offset(0, -3), // Shadow pointing up
+              offset: const Offset(0, -3),
             ),
           ],
         ),
         child: ClipRRect(
-          // Clips the internal navbar to the rounded corners
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(30),
             topRight: Radius.circular(30),
           ),
           child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed, // Keeps icons visible
+            type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             currentIndex: currentIndex,
             onTap: (value) {
@@ -127,135 +267,154 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
                 currentIndex = value;
               });
             },
-
-            // Selected Item Style
             selectedItemColor: accentColor,
             selectedLabelStyle: const TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
             ),
-
-            // Unselected Item Style
             unselectedItemColor: Colors.grey,
             unselectedLabelStyle: const TextStyle(
               fontWeight: FontWeight.w500,
               fontSize: 12,
             ),
-
             showUnselectedLabels: true,
-            elevation: 0, // We handle the shadow in the Container above
-
+            elevation: 0,
             items: [
               BottomNavigationBarItem(
                 icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
-                  child: Icon(
-                    Icons.analytics_outlined,
-                  ), // Changed to "analytics" to look like results
+                  padding: const EdgeInsets.only(bottom: 4.0),
+                  child: Icon(Icons.analytics_outlined),
                 ),
                 activeIcon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
+                  padding: const EdgeInsets.only(bottom: 4.0),
                   child: Icon(Icons.analytics),
                 ),
                 label: 'Results',
               ),
               BottomNavigationBarItem(
                 icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
+                  padding: const EdgeInsets.only(bottom: 4.0),
                   child: Icon(Icons.calendar_today_outlined),
                 ),
                 activeIcon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
+                  padding: const EdgeInsets.only(bottom: 4.0),
                   child: Icon(Icons.calendar_month),
                 ),
-                label: 'Calendar',
+                label: 'Events',
               ),
               BottomNavigationBarItem(
                 icon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
+                  padding: const EdgeInsets.only(bottom: 4.0),
                   child: Icon(Icons.check_circle_outline),
                 ),
                 activeIcon: Padding(
-                  padding: EdgeInsets.only(bottom: 4.0),
+                  padding: const EdgeInsets.only(bottom: 4.0),
                   child: Icon(Icons.check_circle),
                 ),
                 label: 'Attendance',
               ),
               BottomNavigationBarItem(
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 4.0),
-                      child: Icon(Icons.notifications_outlined),
-                    ),
-                    if (notificationCount != 0)
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 15,
-                            minHeight: 15,
-                          ),
-                          child: Center(
-                            child: Text(
-                              notificationCount > 99
-                                  ? '99+'
-                                  : '$notificationCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                icon: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('Users')
+                      .doc(
+                        uid,
+                      ) // replace with dynamic schoolId if needed
+                      .collection('inbox')
+                      .where('status', isEqualTo: 'pending')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = snapshot.hasData
+                        ? snapshot.data!.docs.length
+                        : 0;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Icon(Icons.notifications_outlined),
+                        ),
+                        if (count != 0)
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
                               ),
-                              textAlign: TextAlign.center,
+                              constraints: const BoxConstraints(
+                                minWidth: 15,
+                                minHeight: 15,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  count > 99 ? '99+' : '$count',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
-                activeIcon: Stack(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 4.0),
-                      child: Icon(Icons.notifications),
-                    ),
-                    if (notificationCount != 0)
-                      Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 15,
-                            minHeight: 15,
-                          ),
-                          child: Center(
-                            child: Text(
-                              notificationCount > 99
-                                  ? '99+'
-                                  : '$notificationCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                activeIcon: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('Users')
+                      .doc(
+                        uid,
+                      ) // replace with dynamic schoolId if needed
+                      .collection('inbox')
+                      .where('status', isEqualTo: 'pending')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    int count = snapshot.hasData
+                        ? snapshot.data!.docs.length
+                        : 0;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Icon(Icons.notifications),
+                        ),
+                        if (count != 0)
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
                               ),
-                              textAlign: TextAlign.center,
+                              constraints: const BoxConstraints(
+                                minWidth: 15,
+                                minHeight: 15,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  count > 99 ? '99+' : '$count',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
                 label: 'Alerts',
               ),
@@ -267,53 +426,18 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
   }
 
   Widget _getSelectedView() {
-    // I recommend wrapping these views in a SafeArea or Padding if they feel too close to the edge
-    if (currentIndex == 0) {
-      return ChildrenResults(approve: widget.approve);
-    }
-    if (currentIndex == 1) {
-      return const Calender(); // Ensure Calender is const if possible
-    }
-    if (currentIndex == 2) {
-      return PickChild(approve: widget.approve);
-    }
-    return const Nottifications();
+    if (currentIndex == 0) return ChildrenResults(approve: widget.approve);
+    if (currentIndex == 1) return EventsFirstScreen(approve: widget.approve,);
+    if (currentIndex == 2) return PickChild(approve: widget.approve);
+    return  Nottifications(approve: widget.approve);
+  }
+
+  Future<void> logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const AuthStudent()),
+      (route) => false,
+    );
   }
 }
-
-
-// Stack(
-//                         clipBehavior: Clip.none, // allows badge to overflow
-//                         children: [
-//                           Icon(Icons.message, size: 30, color: Colors.black),
-//                           if (notificationCount != 0)
-//                             Positioned(
-//                               right: -2,
-//                               top: -2,
-//                               child: Container(
-//                                 padding: const EdgeInsets.all(4),
-//                                 decoration: BoxDecoration(
-//                                   color: Colors.red,
-//                                   shape: BoxShape.circle,
-//                                 ),
-//                                 constraints: const BoxConstraints(
-//                                   minWidth: 18,
-//                                   minHeight: 18,
-//                                 ),
-//                                 child: Center(
-//                                   child: Text(
-//                                     notificationCount > 99
-//                                         ? '99+'
-//                                         : '$notificationCount',
-//                                     style: const TextStyle(
-//                                       color: Colors.white,
-//                                       fontSize: 10,
-//                                       fontWeight: FontWeight.bold,
-//                                     ),
-//                                     textAlign: TextAlign.center,
-//                                   ),
-//                                 ),
-//                               ),
-//                             ),
-//                         ],
-//                       ),

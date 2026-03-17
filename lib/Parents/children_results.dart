@@ -1,4 +1,5 @@
 import 'package:banco_mobile/Parents/parents_child_profile.dart';
+import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -178,8 +179,8 @@ class _ChildrenResultsState extends State<ChildrenResults> {
                             vertical: 6,
                           ),
                           child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.blueAccent,
+                            leading:  CircleAvatar(
+                              backgroundColor: mainColor,
                               child: Icon(Icons.person, color: Colors.white),
                             ),
                             title: Text(studentName),

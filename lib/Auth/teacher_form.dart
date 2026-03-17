@@ -37,16 +37,34 @@ class TeacherFormState extends State<TeacherForm> {
     }).toList();
 
     await firestore.collection('Users').doc(user!.uid).set({
+        'schoolId': selectedSchoolId,
       'role': 'teacher',
       'firstName': _firstNameController.text.trim(),
       'secondName': _secondNameController.text.trim(),
       'phone': _phoneController.text.trim(),
       'linkedClasses': FieldValue.arrayUnion(linkedClasses),
       'approved': 'false', // false true pending
+       'createdAt': FieldValue.serverTimestamp(),
+       'email': user.email,
 
     }, SetOptions(merge: true));
 
-  addNotification(user.uid, selectedSchoolId.toString(), '${_firstNameController.text} ${_secondNameController.text} has registed as a Teacher to you school', 'Please aprrove their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')} ');
+      final schoolref = firestore.collection('Schools').doc(selectedSchoolId);
+      await schoolref.set({
+        'staffMembers.${user.uid}': {
+          user.uid: {
+            'role': 'teacher',
+            'firstName': _firstNameController.text.trim(),
+            'secondName': _secondNameController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'email': user.email,
+          },
+        }, 
+      }, SetOptions(merge: true)
+      
+      );
+
+  addNotification(user.uid, selectedSchoolId.toString(), '${_firstNameController.text} ${_secondNameController.text} has registered as a Teacher to you school', 'Please approve their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')} ');
    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('✅ Linked ${linkedClasses.length} class(es) successfully!')),
@@ -143,7 +161,7 @@ class TeacherFormState extends State<TeacherForm> {
                   items: schools.map((school) {
                     return DropdownMenuItem<String>(
                       value: school.id,
-                      child: Text(school['school_name']),
+                      child: Text(school['schoolId']),
                     );
                   }).toList(),
                   onChanged: (value) {

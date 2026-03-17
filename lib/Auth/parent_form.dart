@@ -16,253 +16,366 @@ class ParentForm extends StatefulWidget {
 }
 
 class _ParentFormState extends State<ParentForm> {
-  List<Map<String, dynamic>> studentList = [];
-  List<String> selectedChildren = [];
-  String? selectedSchoolId;
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _secondNameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  // final _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
 
-  Future<void> linkParentToChildren() async {
-    // if (!_formKey.currentState!.validate()) {
-      // Form is not valid
-    final user = FirebaseAuth.instance.currentUser;
-    final firestore = FirebaseFirestore.instance;
-    final linkedChildren = selectedChildren.map((id) {
-      final student = studentList.firstWhere((s) => s['id'] == id);
-      return {
-        "schoolId": selectedSchoolId,
-        "studentId": id,
-        "studentName": student['name'],
-      };
-    }).toList();
+  // State
+  List<Map<String, dynamic>> _studentList = [];
+  final List<String> _selectedChildrenIds = [];
+  String? _selectedSchoolId;
 
-    
-    
-    await firestore.collection('Users').doc(user!.uid).set({
-      'role': 'parent',
-      'firstName': _firstNameController.text.trim(),
-      'secondName': _secondNameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'linkedChildren': FieldValue.arrayUnion(linkedChildren),
-      'approved': 'false', // false true pending
+  bool _isSubmitting = false;
+  bool _isLoadingStudents = false;
 
-    }, SetOptions(merge: true));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ Linked ${linkedChildren.length} child(ren)')),
-    );  
-  addNotification(user.uid, selectedSchoolId.toString(), 
-  '${_firstNameController.text} ${_secondNameController.text} has registed as a parent to you school', 
-  'Please aprrove their account. These are the students they want to link to: ${linkedChildren.map((e) => e['studentName']).join(', ')} ');
-  setupFcm();
-Navigator.pushAndRemoveUntil(
-      context, 
-      MaterialPageRoute(builder: (context) => const MyApp()),
-      (route) => false, // remove all previous routes
-    );
-    // }
+  // Controllers
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _relationController = TextEditingController();
+  final _nationalityController = TextEditingController();
+  final _addressController = TextEditingController();
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _phoneController.dispose();
+    _relationController.dispose();
+    _nationalityController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
-  Future<void> loadStudentsFromSchool(String schoolId) async {
-  final firestore = FirebaseFirestore.instance;
-  final possibleCollections = [
-    'studentModelP1',
-    'studentModelP2',
-    'studentModelP3',
-    'studentModelP4',
-    'studentModelP5',
-    'studentModelP6',
-    'studentModelP7',
-  ];
+  Future<String?> showInfoDialog(BuildContext context, String title) {
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-  List<Map<String, dynamic>> allStudents = [];
+  Future<void> _handleSubmission() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  for (final col in possibleCollections) {
-    final snapshot = await firestore
-        .collection('Schools')
-        .doc(schoolId)
-        .collection(col)
-        .get();
+    if (_selectedChildrenIds.isEmpty || _selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one student')),
+      );
+      return;
+    }
 
-    for (var doc in snapshot.docs) {
-      allStudents.add({
-        'id': doc.id,
-        'name': doc['studentName'],
-        'classIn': doc['classIn'],
-      });
+    setState(() => _isSubmitting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final firestore = FirebaseFirestore.instance;
+
+      final linkedChildren = _selectedChildrenIds.map((id) {
+        final student = _studentList.firstWhere(
+          (s) => s['id'] == id,
+          orElse: () => {'id': id, 'name': 'Unknown'},
+        );
+
+        return {
+          'schoolId': _selectedSchoolId,
+          'studentId': student['id'],
+          'studentName': student['name'],
+        };
+      }).toList();
+
+      // Save parent profile
+      await firestore.collection('Users').doc(user.uid).set({
+        'role': 'parent',
+        'firstName': _firstNameController.text.trim(),
+        'secondName': _lastNameController.text.trim(),
+        'relation': _relationController.text.trim(),
+        'address': _addressController.text.trim(),
+        'nationality': _nationalityController.text.trim(),
+        'schoolId': _selectedSchoolId,
+        'phone': _phoneController.text.trim(),
+        'linkedChildren': linkedChildren,
+        'approved': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // await FCM token
+       await setupFcmForm(_firstNameController.text.trim(), _lastNameController.text.trim(), _phoneController.text.trim());
+
+      // Correct nested parent linking
+      // await firestore.collection('Schools').doc(_selectedSchoolId).set({
+      //   'linkedParents': {
+      //     user.uid: {
+      //       'role': 'parent',
+      //       'firstName': _firstNameController.text.trim(),
+      //       'secondName': _lastNameController.text.trim(),
+      //       'phone': _phoneController.text.trim(),
+      //       // 'fcmToken': fcmToken,
+      //       'approved': false,
+      //       'createdAt': FieldValue.serverTimestamp(),
+      //     }
+      //   }
+      // }, SetOptions(merge: true));
+
+      // Notify admins
+      await addNotification(
+        user.uid,
+        _selectedSchoolId!,
+        'New Parent Registration',
+        'Parent requested access for: ${linkedChildren.map((e) => e['studentName']).join(', ')}',
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MyApp()),
+        (_) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  setState(() {
-    studentList = allStudents;
-    selectedChildren.clear();
-  });
-}
+  Future<void> _loadStudents(String schoolId) async {
+    setState(() => _isLoadingStudents = true);
 
+    final firestore = FirebaseFirestore.instance;
+    final collections = List.generate(7, (i) => 'studentModelP${i + 1}');
 
-  
+    try {
+      final futures = collections.map((col) {
+        return firestore
+            .collection('Schools')
+            .doc(schoolId)
+            .collection(col)
+            .get();
+      });
+
+      final snapshots = await Future.wait(futures);
+
+      List<Map<String, dynamic>> allStudents = [];
+
+      for (var snapshot in snapshots) {
+        for (var doc in snapshot.docs) {
+          allStudents.add({
+            'id': doc.id,
+            'name': doc['studentName'] ?? 'Unknown',
+            'classIn': doc['classIn'] ?? '',
+          });
+        }
+      }
+
+      setState(() {
+        _studentList = allStudents;
+        _selectedChildrenIds.clear();
+      });
+    } finally {
+      if (mounted) setState(() => _isLoadingStudents = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Banco Mobile")),
+      appBar: AppBar(
+        title: const Text("Parent Registration"),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-           
-            TextFormField(
-                  controller: _firstNameController,
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader("Personal Information"),
+              _buildTextField(_firstNameController, "First Name"),
+              _buildTextField(_lastNameController, "Second Name"),
+              _buildTextField(_phoneController, "Phone Number", isPhone: true),
+              _buildTextField(_relationController, "Relationship to Student"),
+              _buildTextField(_addressController, "Residential Address"),
+              _buildTextField(_nationalityController, "Nationality"),
 
-                  decoration: customDecorationParentForm(labelText: 'First Name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please Type Your First Name';
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  controller: _secondNameController,
+              const SizedBox(height: 30),
+              _buildSectionHeaderSchoolName("School & Student Link"),
+              _buildSchoolDropdown(),
 
-                  decoration: customDecorationParentForm(labelText: 'Second Name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please Type Your Second Name';
-                    }
-                    return null;
-                  },
-                ),
+              if (_selectedSchoolId != null) ...[
+                const SizedBox(height: 20),
+                _buildStudentList(),
+              ],
 
-                TextFormField(
-                  keyboardType: TextInputType.phone,
-                  controller: _phoneController,
+              const SizedBox(height: 40),
+              _buildSubmitButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                  decoration: customDecorationParentForm(labelText: 'Phone Number'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please Type Your Second Name';
-                    }
-                    return null;
-                  },
-                ),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+      ),
+    );
+  }
 
-            const SizedBox(height: 10),
-            Text(
-              "Choose the School",
-              style: TextStyle(
-                fontSize: normalFontSize,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
+  Widget _buildSectionHeaderSchoolName(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+          ),
+          const SizedBox(width: 10),
+          InkWell(
+            onTap: () {
+              showInfoDialog(
+                context,
+                'Can\'t find your school? Contact support: 0707477946 / 0757999413',
+              );
+            },
+            child: const Icon(Icons.info_outline, size: 20, color: Colors.blue),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // --- School Dropdown ---
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('Schools')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+  Widget _buildTextField(TextEditingController controller, String label,
+      {bool isPhone = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+        decoration: customDecorationParentForm(labelText: label),
+        validator: (value) =>
+            (value == null || value.isEmpty) ? 'Required field' : null,
+      ),
+    );
+  }
 
-                if (snapshot.hasError) {
-                  return const Text('Error loading schools');
-                }
+  Widget _buildSchoolDropdown() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('Schools').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const LinearProgressIndicator();
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Text('No schools found');
-                }
+        return DropdownButtonFormField<String>(
+          decoration: customDecorationParentForm(labelText: "Select School"),
+          value: _selectedSchoolId,
+          items: snapshot.data!.docs.map((doc) {
+            return DropdownMenuItem(
+              value: doc.id,
+              child: Text(doc['school_name'] ?? 'Unnamed School'),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() => _selectedSchoolId = val);
+              _loadStudents(val);
+            }
+          },
+        );
+      },
+    );
+  }
 
-                final schools = snapshot.data!.docs;
+  Widget _buildStudentList() {
+    if (_isLoadingStudents) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    hint: const Text("Select School"),
-                    value: selectedSchoolId,
-                    items: schools.map((school) {
-                      return DropdownMenuItem<String>(
-                        value: school.id,
-                        child: Text(
-                          school['school_name'], // ⚠️ check field name
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedSchoolId = value);
-                        loadStudentsFromSchool(value);
-                      }
-                    },
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // --- Students List ---
-            // if (studentList.isNotEmpty)
-            Container(
-              constraints: const BoxConstraints(maxHeight: 450),
-              color: Colors.amber[50],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          const ListTile(
+            title: Text("Select Your Child(ren)",
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            leading: Icon(Icons.group_add),
+          ),
+          const Divider(height: 1),
+          if (_studentList.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text("No students found for this school"),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
               child: ListView.builder(
-                itemCount: studentList.length,
+                shrinkWrap: true,
+                itemCount: _studentList.length,
                 itemBuilder: (context, index) {
-                  final student = studentList[index];
-                  final isSelected = selectedChildren.contains(student['id']);
-                  if (studentList.isEmpty) {
-                    return const Center(
-                      child: Text('No students found for this school'),
-                    );
-                  } else {
-                    return CheckboxListTile(
-                      title: Text("${student['name']} (${student['classIn']})"),
-                      value: isSelected,
-                      onChanged: (bool? selected) {
-                        setState(() {
-                          if (selected == true) {
-                            selectedChildren.add(student['id']);
-                          } else {
-                            selectedChildren.remove(student['id']);
-                          }
-                        });
-                      },
-                    );
-                  }
+                  final student = _studentList[index];
+                  final isSelected =
+                      _selectedChildrenIds.contains(student['id']);
+
+                  return CheckboxListTile(
+                    title: Text(student['name']),
+                    subtitle: Text("Class: ${student['classIn']}"),
+                    value: isSelected,
+                    onChanged: (bool? selected) {
+                      setState(() {
+                        selected == true
+                            ? _selectedChildrenIds.add(student['id'])
+                            : _selectedChildrenIds.remove(student['id']);
+                      });
+                    },
+                  );
                 },
               ),
             ),
+        ],
+      ),
+    );
+  }
 
-            const SizedBox(height: 20),
-
-            // --- Done Button ---
-            ElevatedButton(
-              onPressed:
-                  (selectedSchoolId != null && selectedChildren.isNotEmpty)
-                  ? () {
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     builder: (context) => SelectStudentParent(
-                      //       // schoolId: selectedSchoolId!,
-                      //       // selectedChildren: selectedChildren,
-                      //     ),
-                      //   ),
-                      // );
-                        linkParentToChildren();
-                    }
-                  : null, // disabled if no school or student selected
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text('Done', style: TextStyle(fontSize: normalFontSize)),
-              ),
-            ),
-            const SizedBox(height: 25),
-          ],
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _isSubmitting ? null : _handleSubmission,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
         ),
+        child: _isSubmitting
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                'Register & Link Account',
+                style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }

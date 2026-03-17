@@ -1,7 +1,10 @@
+// ignore_for_file: unused_element
+
 import 'package:banco_mobile/Auth/auth_student.dart';
 import 'package:banco_mobile/HeadTeacher/head_teacher_dashboard.dart';
 import 'package:banco_mobile/Parents/parents_children_list.dart';
-import 'package:banco_mobile/Teachers/teacher_classes.dart';
+import 'package:banco_mobile/Security/attendance_charts_security.dart';
+import 'package:banco_mobile/Teachers/teacher_home.dart';
 import 'package:banco_mobile/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -96,7 +99,7 @@ class MyApp extends StatelessWidget {
               if (userSnapshot.hasError) {
                 return Scaffold(
                   body: Center(
-                    child: Text('Error loading user: ${userSnapshot.error}'),
+                    child: Text('Error loading user'),
                   ),
                 );
               }
@@ -130,14 +133,24 @@ class MyApp extends StatelessWidget {
               final role = userData['role']?.toString().toLowerCase() ?? '';
               List<dynamic>? classes = userData['linkedClasses'] ?? [];
               final approve = userData['approved'].toString().toLowerCase();
+              final schoolname = userData['linkedChildren']?.toString() ?? '';
+              final schoolId = userData['schoolId']?.toString() ?? '';
 
               // ✅ Navigate based on role
               if (role == 'parent') {
-                return ParentsChildrenList(approve: approve,);
-              } else if (role == 'headteacher') {
-                return HeadTeacherDashboard(classes: classes, approve: approve);
+                return ParentsChildrenList(approve: approve, schoolname: schoolname);
+              } 
+              if (role == 'security' ) {
+                return DailyAttendanceChartSecurity(schoolId: schoolId, 
+                        date: DateTime.now().toIso8601String().split('T').first,
+                
+                );
+
+              }
+              else if (role == 'headteacher') {
+                return HeadTeacherDashboard(classes: classes, approve: approve, schoolId: schoolId,);
               } else {
-                return TeacherClasses(classes: classes, approve: approve);
+                return TeacherHome(schoolname: schoolname, approve: approve);
               }
             },
           );

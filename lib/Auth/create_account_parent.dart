@@ -44,11 +44,10 @@ class _CreateAccountParentState extends State<CreateAccountParent> {
         );
         setupFcm();
 
-
         Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ParentForm()),
-      );
+          context,
+          MaterialPageRoute(builder: (context) => ParentForm()),
+        );
       } catch (e) {
         // Handle errors here, e.g., show a snackbar
         if (kDebugMode) {
@@ -56,7 +55,6 @@ class _CreateAccountParentState extends State<CreateAccountParent> {
         }
         // showsnackBar(context, 'Error creating account: $e');
       }
-     
     }
   }
 
@@ -185,10 +183,12 @@ class _CreateAccountParentState extends State<CreateAccountParent> {
                 // LogIn InkWell
                 InkWell(
                   onTap: () {
-                     Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AuthStudent()),
-        );
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AuthStudent(),
+                      ),
+                    );
                   },
                   child: Text(
                     'Already have an account? LogIn',
