@@ -5,12 +5,12 @@ import 'package:intl/intl.dart';
 
 class ChildAttendance extends StatefulWidget {
   final String schoolId;
-  final String studentName;
+  final String studentId;
 
   const ChildAttendance({
     super.key,
     required this.schoolId,
-    required this.studentName,
+    required this.studentId,
   });
 
   @override
@@ -42,7 +42,7 @@ class _ChildAttendanceState extends State<ChildAttendance> {
       final studentsSnap = await attendanceCollection
           .doc(dateDoc.id)
           .collection('students')
-          .where('studentName', isEqualTo: widget.studentName)
+          .where('idNin', isEqualTo: widget.studentId)
           .get();
 
       if (studentsSnap.docs.isNotEmpty) {
@@ -67,7 +67,7 @@ class _ChildAttendanceState extends State<ChildAttendance> {
         .collection('attendance')
         .doc(dateString)
         .collection('students')
-        .where('studentName', isEqualTo: widget.studentName)
+        .where('idNin', isEqualTo: widget.studentId)
         .get();
 
     return snap.docs.map((d) => d.data()).toList();

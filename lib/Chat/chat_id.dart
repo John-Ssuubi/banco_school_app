@@ -5,6 +5,7 @@ Future<String> getOrCreateChatId({
   required String parentId,
   required String parentNameFirst,
   required String parentNameSecond,
+  required String schoolName,
 }) async {
   final chatsRef = FirebaseFirestore.instance.collection('Chats');
 
@@ -28,6 +29,7 @@ Future<String> getOrCreateChatId({
     'parentId': parentId,
     'parentNameFirst': parentNameFirst,
     'parentNameSecond': parentNameSecond,
+    'schoolName': schoolName,
     'participants': [schoolId, parentId],
     'lastMessage': '',
     'lastMessageTime': FieldValue.serverTimestamp(),

@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, sized_box_for_whitespace
 
-import 'package:banco_mobile/HeadTeacher/Results/approve_results_page.dart';
 import 'package:banco_mobile/home.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,8 +22,14 @@ class HeadteacherClasses extends StatefulWidget {
 }
 
 class _HeadteacherClassesState extends State<HeadteacherClasses> {
-  late final String schoolId;
+  String? schoolId;
   List<Map<String, dynamic>>? schoolClasses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
 
   Future<void> loadData() async {
     try {
@@ -41,9 +46,9 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
         final classes = List<Map<String, dynamic>>.from(
           data['linkedClasses'] ?? [],
         );
+
         setState(() {
           schoolClasses = classes;
-          // pick the first school's ID
           if (classes.isNotEmpty) {
             schoolId = classes.first['schoolId'];
           }
@@ -56,116 +61,23 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
     }
   }
 
-  // Future<void> logout(BuildContext context) async {
-  //   await FirebaseAuth.instance.signOut();
-
-  //   // Navigate to AuthScreen (or your login screen)
-  //   Navigator.pushAndRemoveUntil(
-  //     context,
-  //     MaterialPageRoute(builder: (context) => const AuthStudent()),
-  //     (route) => false, // remove all previous routes
-  //   );
-  // }
-
-  @override
-  void initState() {
-    super.initState();
-    loadData();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      
       appBar: AppBar(
         backgroundColor: mainColor,
-        // actions: [
-        //   InkWell(
-        //     onTap: () {
-        //       logout(context);
-        //     },
-        //     child: Padding(
-        //       padding: const EdgeInsets.all(8.0),
-        //       child: Icon(Icons.logout),
-        //     ),
-        //   ),
-        // ],
         leading: InkWell(
-          child: Icon(Icons.arrow_back_outlined,
-          color: Colors.white,
-          ),
-          onTap: () {
-            Navigator.pop(context);
-          },
+          child: const Icon(Icons.arrow_back_outlined, color: Colors.white),
+          onTap: () => Navigator.pop(context),
         ),
         title: const Text(
           "My Classes",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
-        elevation: 1,
       ),
-      // floatingActionButton: Padding(
-      //   padding: const EdgeInsets.only(bottom: 8.0),
-      //   child: SizedBox(
-      //     width: 160,
-      //     child: FloatingActionButton(
-            
-      //       onPressed: () {
-      //        Navigator.push(
-      //           context,
-      //           MaterialPageRoute(
-      //             builder: (context) => ResultsApprovalScreen(schoolId: schoolId,),
-      //           ),
-      //         );
-      //       },
-      //       child: Padding(
-      //         padding: const EdgeInsets.all(8.0),
-      //         child: Row(
-      //           children: [
-      //             Text('Confirm Results'),
-      //             SizedBox(width: 4),
-      //             Icon(Icons.check),
-      //           ],
-      //         ),
-      //       ),
-      //     ),
-      //   ),
-      // ),
-      // backgroundColor: mainColor,
-      // drawer: Drawer(
-      //   child: Column(
-      //     children: [
-      //       const UserAccountsDrawerHeader(
-      //         decoration: BoxDecoration(color: Colors.indigo),
-      //         accountName: Text('Banco Admin'),
-      //         accountEmail: Text('admin@banco.edu'),
-      //         currentAccountPicture: CircleAvatar(
-      //           backgroundColor: Colors.white,
-      //           child: Icon(Icons.school, size: 45, color: Colors.indigo),
-      //         ),
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.home),
-      //         title: const Text('Home'),
-      //         onTap: () => Navigator.pop(
-      //           context,
-      //           // MaterialPageRoute(builder: (context) => const HomePage())
-      //         ),
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.settings),
-      //         title: const Text('Settings'),
-      //         onTap: () => Navigator.push(
-      //           context,
-      //           MaterialPageRoute(builder: (context) => SettingsTeacher()),
-      //         ),
-      //       ),
-      //     ],
-      //   ),
-      // ),
       body: widget.classes == null || widget.classes!.isEmpty
           ? const Center(
               child: Text(
@@ -180,7 +92,6 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
                 itemBuilder: (context, index) {
                   final classData = widget.classes![index];
 
-                  // Each class can be stored as a Map (from Firestore)
                   final className = classData is Map
                       ? classData['className'] ?? 'Unknown Class'
                       : classData.toString();
@@ -191,30 +102,37 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
                       child: Center(
                         child: Column(
                           children: [
-                            Text('Waiting for Admin to approve you.', style: whiteText,),
-                            Text('Please contact the school to approve you.', style: whiteText),
+                            Text('Waiting for Admin to approve you.',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                )),
+                            Text('Please contact the school.',
+                                style: TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 14,
+                                )),
                           ],
                         ),
                       ),
                     );
-                  } else if (widget.approve == 'false') {
+                  }
+
+                  if (widget.approve == 'false') {
                     return Container(
                       width: 500,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Text('Access Denied.', style: whiteText),
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  'Please contact the school to approve you. Or Register again in settings',
-                                style: whiteText
-                                ),
-                              ),
-                            ],
-                          ),
+                      padding: const EdgeInsets.all(8.0),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text('Access Denied.', style: whiteText),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Contact the school or register again in settings.',
+                              style: whiteText,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -239,7 +157,9 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
                       leading: CircleAvatar(
                         backgroundColor: theme.primaryColor.withOpacity(0.2),
                         child: Text(
-                          className[1].toUpperCase(),
+                          className.isNotEmpty
+                              ? className[0].toUpperCase()
+                              : '?',
                           style: TextStyle(
                             color: theme.primaryColor,
                             fontWeight: FontWeight.bold,
@@ -253,8 +173,8 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      // subtitle: const Text("Tap to view students"),
-                      trailing: const Icon(Icons.chevron_right_rounded),
+                      trailing:
+                          const Icon(Icons.chevron_right_rounded),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -265,9 +185,6 @@ class _HeadteacherClassesState extends State<HeadteacherClasses> {
                             ),
                           ),
                         );
-                        // ScaffoldMessenger.of(context).showSnackBar(
-                        //   SnackBar(content: Text("Opening $className...")),
-                        // );
                       },
                     ),
                   );

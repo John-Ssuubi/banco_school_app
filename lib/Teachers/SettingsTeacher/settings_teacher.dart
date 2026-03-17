@@ -243,7 +243,7 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
                       }
 
                       return DropdownButtonFormField<String>(
-                        value: selectedSchoolId,
+                        initialValue: selectedSchoolId,
                         decoration: const InputDecoration(
                           labelText: "School",
                           border: OutlineInputBorder(),

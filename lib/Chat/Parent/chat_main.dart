@@ -11,9 +11,11 @@ class ChatScreen extends StatefulWidget {
   final String myRole;
   final String firstName;
   final String secondName;
+  final String schoolName;
 
   const ChatScreen({
     super.key,
+    required this.schoolName,
     required this.schoolId,
     required this.myRole,
     required this.firstName,
@@ -42,6 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initChat() async {
     final id = await getOrCreateChatId(
+      schoolName: widget.schoolName,
       schoolId: widget.schoolId,
       parentId: userId,
       parentNameFirst: widget.firstName,

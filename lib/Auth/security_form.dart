@@ -71,15 +71,16 @@ class _SecurityFormState extends State<SecurityForm> {
         const SnackBar(content: Text('✅ Security registered successfully')),
       );
 
-      final schoolref = firestore.collection('Schools').doc(selectedSchoolId);
+      final schoolref = firestore.collection('Schools').doc(selectedSchoolId).collection('staffMembers').doc(user.uid);
       await schoolref.set({
-        'staffMembers.${user.uid}': {
+        
           user.uid: {
             'role': 'security',
             'firstName': _firstNameController.text.trim(),
             'secondName': _secondNameController.text.trim(),
             'phone': _phoneController.text.trim(),
-          },
+            'email': user.email,
+            'securityUid': user.uid,
         },
       });
 
@@ -169,7 +170,7 @@ class _SecurityFormState extends State<SecurityForm> {
                   }
 
                   return DropdownButtonFormField<String>(
-                    value: selectedSchoolId,
+                    initialValue: selectedSchoolId,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       hintText: 'Select School',

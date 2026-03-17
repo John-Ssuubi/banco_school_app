@@ -44,7 +44,7 @@ class _BarcodeHomeState extends State<BarcodeHome> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading user data: $e');
+        print('Error loading user data');
       }
     }
   }

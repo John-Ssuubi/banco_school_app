@@ -37,46 +37,48 @@ class TeacherFormState extends State<TeacherForm> {
     }).toList();
 
     await firestore.collection('Users').doc(user!.uid).set({
-        'schoolId': selectedSchoolId,
+      'schoolId': selectedSchoolId,
       'role': 'teacher',
       'firstName': _firstNameController.text.trim(),
       'secondName': _secondNameController.text.trim(),
       'phone': _phoneController.text.trim(),
       'linkedClasses': FieldValue.arrayUnion(linkedClasses),
       'approved': 'false', // false true pending
-       'createdAt': FieldValue.serverTimestamp(),
-       'email': user.email,
-
+      'createdAt': FieldValue.serverTimestamp(),
+      'email': user.email,
     }, SetOptions(merge: true));
 
-      final schoolref = firestore.collection('Schools').doc(selectedSchoolId);
-      await schoolref.set({
-        'staffMembers.${user.uid}': {
-          user.uid: {
-            'role': 'teacher',
-            'firstName': _firstNameController.text.trim(),
-            'secondName': _secondNameController.text.trim(),
-            'phone': _phoneController.text.trim(),
-            'email': user.email,
-          },
-        }, 
-      }, SetOptions(merge: true)
-      
-      );
+      final schoolref = firestore.collection('Schools').doc(selectedSchoolId).collection('staffMembers').doc(user.uid);
+      await schoolref.set({          
+              'role': 'teacher',
+              'firstName': _firstNameController.text.trim(),
+              'secondName': _secondNameController.text.trim(),
+              'phone': _phoneController.text.trim(),
+              'email': user.email,
+              'teacherUid': user.uid,        
+    
+        }, SetOptions(merge: true));
 
-  addNotification(user.uid, selectedSchoolId.toString(), '${_firstNameController.text} ${_secondNameController.text} has registered as a Teacher to you school', 'Please approve their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')} ');
-   
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ Linked ${linkedClasses.length} class(es) successfully!')),
+    addNotification(
+      user.uid,
+      selectedSchoolId.toString(),
+      '${_firstNameController.text} ${_secondNameController.text} has registered as a Teacher to you school',
+      'Please approve their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')} ',
     );
 
-      Navigator.pushAndRemoveUntil(
-      context, 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '✅ Linked ${linkedClasses.length} class(es) successfully!',
+        ),
+      ),
+    );
+
+    Navigator.pushAndRemoveUntil(
+      context,
       MaterialPageRoute(builder: (context) => const MyApp()),
       (route) => false, // remove all previous routes
     );
-              
-
   }
 
   // Load all possible classes (static list)
@@ -109,23 +111,26 @@ class TeacherFormState extends State<TeacherForm> {
             TextFormField(
               controller: _firstNameController,
               decoration: customDecorationParentForm(labelText: 'First Name'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your first name' : null,
+              validator: (value) => value == null || value.isEmpty
+                  ? 'Please type your first name'
+                  : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               controller: _secondNameController,
               decoration: customDecorationParentForm(labelText: 'Second Name'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your second name' : null,
+              validator: (value) => value == null || value.isEmpty
+                  ? 'Please type your second name'
+                  : null,
             ),
             const SizedBox(height: 10),
             TextFormField(
               keyboardType: TextInputType.phone,
               controller: _phoneController,
               decoration: customDecorationParentForm(labelText: 'Phone Number'),
-              validator: (value) =>
-                  value == null || value.isEmpty ? 'Please type your phone number' : null,
+              validator: (value) => value == null || value.isEmpty
+                  ? 'Please type your phone number'
+                  : null,
             ),
 
             const SizedBox(height: 20),
@@ -140,7 +145,9 @@ class TeacherFormState extends State<TeacherForm> {
 
             // --- School Dropdown ---
             StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('Schools').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('Schools')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -209,7 +216,8 @@ class TeacherFormState extends State<TeacherForm> {
 
             // --- Done Button ---
             ElevatedButton(
-              onPressed: (selectedSchoolId != null && selectedClasses.isNotEmpty)
+              onPressed:
+                  (selectedSchoolId != null && selectedClasses.isNotEmpty)
                   ? linkTeacherToClasses
                   : null,
               child: Padding(
@@ -235,7 +243,9 @@ class ClassesModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ClassesModel && model == other.model && className == other.className;
+      other is ClassesModel &&
+          model == other.model &&
+          className == other.className;
 
   @override
   int get hashCode => model.hashCode ^ className.hashCode;

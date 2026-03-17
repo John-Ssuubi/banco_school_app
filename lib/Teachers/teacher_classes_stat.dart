@@ -1,9 +1,7 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, sized_box_for_whitespace
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/Charts/attendance_charts.dart';
 import 'package:banco_mobile/HeadTeacher/stat_ht.dart';
-import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';

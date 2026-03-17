@@ -3,8 +3,10 @@ class StaffMember {
   final String secondName;
   final String phone;
   final String role;
+  final String uid;
 
   StaffMember({
+    required this.uid,
     required this.firstName,
     required this.secondName,
     required this.phone,
@@ -17,26 +19,40 @@ class StaffMember {
       secondName: data['secondName'] ?? '',
       phone: data['phone'] ?? '',
       role: data['role'] ?? '',
+      uid: data['teacherUid'],
     );
   }
 }
 
 class LinkedParent {
-  final String parentName;
- 
+  // final String parentName;
+  final String parentUid;
   final String fcmToken;
+  final String phone;
+  final String email;
+  final String firstName;
+  final String secondName;
 
   LinkedParent({
-    required this.parentName,
+    // required this.parentName,
+    required this.parentUid,
+    required this.phone,
+    required this.email,
+    required this.firstName,
+    required this.secondName,
     required this.fcmToken,
   });
 
   factory LinkedParent.fromMap(Map<String, dynamic> data) {
     return LinkedParent(
-      parentName: data['firstName'] ?? '',
      
+    
+      parentUid: data['parentUid'] ?? '',
+      phone: data['phone'] ?? '',
+      email: data['email'] ?? '',
+      firstName: data['firstName'] ?? '',
+      secondName: data['secondName'] ?? '',
       fcmToken: data['fcmToken'] ?? '',
     );
   }
 }
-

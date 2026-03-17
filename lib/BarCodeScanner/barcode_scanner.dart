@@ -1,3 +1,7 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:audioplayers/audioplayers.dart';
+import 'package:banco_mobile/Notifications/firebase_notification.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +20,8 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   String? barcodeValue;
   bool _cameraGranted = false;
   bool _isProcessing = false;
+  final year = DateTime.now().year.toString();
+  final AudioPlayer _audioplayer = AudioPlayer();
 
   @override
   void initState() {
@@ -36,6 +42,14 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         openAppSettings();
       }
     }
+  }
+
+  Future<void> _playSuccessSound() async {
+    await _audioplayer.play(AssetSource('sounds/success.mp3'));
+  }
+
+  Future<void> _playErrorSound() async {
+    await _audioplayer.play(AssetSource('sounds/error.mp3'));
   }
 
   final today =
@@ -72,11 +86,15 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       final String studentDocId = indexData['studentDocId'];
 
       if (kDebugMode) {
-        print('Class Collection: $classCollection, Student Doc ID: $studentDocId');
+        print(
+          'Class Collection: $classCollection, Student Doc ID: $studentDocId',
+        );
       }
 
       /// 2️⃣ FETCH STUDENT (single read)
       final studentSnap = await schoolRef
+          .collection('Years')
+          .doc(year)
           .collection(classCollection)
           .doc(studentDocId)
           .get();
@@ -111,18 +129,26 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
           .doc(cleanId);
 
       /// 3️⃣ IDEMPOTENT ATTENDANCE WRITE (NO READ)
-      await attendanceRef.set({
-        'studentName': studentName,
-        'idNin': cleanId,
-        'classCollection': classCollection,
-        'classIn': classIn,
-        'timeIn': FieldValue.serverTimestamp(),
-        'status': 'present',
-        'schoolFrom': widget.schoolId,
-        'parentFcmToken': parentFcmToken,
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snap = await transaction.get(attendanceRef);
 
-      _showMessage("$studentName marked present.");
+        if (snap.exists) {
+          throw Exception("already_marked");
+        }
+
+        transaction.set(attendanceRef, {
+          'studentName': studentName,
+          'idNin': cleanId,
+          'classCollection': classCollection,
+          'classIn': classIn,
+          'timeIn': FieldValue.serverTimestamp(),
+          'status': 'present',
+          'schoolFrom': widget.schoolId,
+          'parentFcmToken': parentFcmToken,
+        });
+        _playSuccessSound();
+        _showMessage("Attendance marked for $studentName");
+      });
 
       /// 4️⃣ LOG NOTIFICATION (Cloud Function can listen here)
       if (parentUid.isNotEmpty) {
@@ -147,17 +173,26 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         debugPrint('⚠️ parentUid missing for student $cleanId');
       }
 
-      // if (parentFcmToken.isNotEmpty) {
-      //   sendNotification(
-      //     context: context,
-      //     title: 'Attendance',
-      //     body: '$studentName has arrived at school',
-      //     token: parentFcmToken,
-      //   );
-      // }
-    } catch (e) {
-      _showMessage("Error: $e");
-    } finally {
+      if (parentFcmToken.isNotEmpty) {
+        sendNotification(
+          context: context,
+          title: 'Attendance',
+          body: '$studentName has arrived at school',
+          token: parentFcmToken,
+        );
+      }
+    } 
+    
+    catch (e) {
+      _playErrorSound();
+      if (e.toString().contains("already_marked")) {
+        _showMessage("Student is already marked present today.");
+      } else {
+        _showMessage("Error processing scanned ID.");
+        debugPrint("Error: $e");
+      }
+    }
+    finally {
       if (mounted) {
         setState(() => _isProcessing = false);
       }
@@ -175,34 +210,37 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     return Scaffold(
       appBar: AppBar(title: const Text("Scan Student ID")),
       body: _cameraGranted
-          ? Stack(
-              children: [
-                MobileScanner(
-                  onDetect: (capture) {
-                    final barcode = capture.barcodes.first;
-                    final String? scannedCode = barcode.rawValue;
+          ? InkWell(
+              onTap: () => setState(() => barcodeValue = null),
+              child: Stack(
+                children: [
+                  MobileScanner(
+                    onDetect: (capture) {
+                      final barcode = capture.barcodes.first;
+                      final String? scannedCode = barcode.rawValue;
 
-                    if (scannedCode != null && !_isProcessing) {
-                      setState(() => barcodeValue = scannedCode);
-                      _handleScannedId(scannedCode);
-                    }
-                  },
-                ),
-                if (barcodeValue != null)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      width: double.infinity,
-                      color: Colors.black54,
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        "Scanned Code: $barcodeValue",
-                        style: const TextStyle(color: Colors.white),
-                        textAlign: TextAlign.center,
+                      if (scannedCode != null && !_isProcessing) {
+                        setState(() => barcodeValue = scannedCode);
+                        _handleScannedId(scannedCode);
+                      }
+                    },
+                  ),
+                  if (barcodeValue != null)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: double.infinity,
+                        color: Colors.black54,
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          "Scanned Code: $barcodeValue",
+                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             )
           : Center(
               child: Column(

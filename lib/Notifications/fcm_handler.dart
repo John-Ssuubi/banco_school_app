@@ -9,17 +9,17 @@ void setupForegroundNotifications() {
 
     if (notification != null && android != null) {
       await flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        const NotificationDetails(
+        // notification.hashCode,
+      title: notification.title,
+       body: notification.body,
+      notificationDetails:   const NotificationDetails(
           android: AndroidNotificationDetails(
             'attendance_channel', // channel id
             'Attendance Notifications', // channel name
             importance: Importance.max,
             priority: Priority.high,
           ),
-        ),
+        ), id: notification.hashCode,
       );
     }
   });
@@ -35,5 +35,5 @@ Future<void> initLocalNotifications() async {
   const InitializationSettings initializationSettings =
       InitializationSettings(android: initializationSettingsAndroid);
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(settings:  initializationSettings);
 }

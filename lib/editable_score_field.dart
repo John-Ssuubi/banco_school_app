@@ -45,7 +45,7 @@ class _EditableScoreFieldState extends State<EditableScoreField> {
     try {
       final docRef = FirebaseFirestore.instance
           .collection('Schools')
-          .doc(widget.schoolId)
+          .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
           .collection(widget.model)
           .doc(widget.studentId);
 
@@ -73,7 +73,7 @@ class _EditableScoreFieldState extends State<EditableScoreField> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("❌ Error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Error")));
     } finally {
       setState(() => _isUpdating = false);
     }
@@ -157,7 +157,7 @@ class _EditableScoreFieldTerm2State extends State<EditableScoreFieldTerm2> {
     try {
       final docRef = FirebaseFirestore.instance
           .collection('Schools')
-          .doc(widget.schoolId)
+          .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
           .collection(widget.model)
           .doc(widget.studentId);
 
@@ -185,7 +185,7 @@ class _EditableScoreFieldTerm2State extends State<EditableScoreFieldTerm2> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("❌ Error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Error")));
     } finally {
       setState(() => _isUpdating = false);
     }
@@ -270,7 +270,7 @@ class _EditableScoreFieldTerm3State extends State<EditableScoreFieldTerm3> {
     try {
       final docRef = FirebaseFirestore.instance
           .collection('Schools')
-          .doc(widget.schoolId)
+          .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
           .collection(widget.model)
           .doc(widget.studentId);
 
@@ -298,7 +298,7 @@ class _EditableScoreFieldTerm3State extends State<EditableScoreFieldTerm3> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("❌ Error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Error")));
     } finally {
       setState(() => _isUpdating = false);
     }

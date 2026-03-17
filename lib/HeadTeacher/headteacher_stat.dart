@@ -52,7 +52,7 @@ class _HeadteacherState extends State<HeadteacherStat> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error loading user data: $e');
+        print('Error loading user data');
       }
     }
   }

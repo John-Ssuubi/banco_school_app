@@ -3,6 +3,8 @@
 import 'package:banco_mobile/Charts/stat_model.dart';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/HeadTeacher/StatTerm1/build_bot_view.dart';
+import 'package:banco_mobile/HeadTeacher/stat_ht.dart';
+import 'package:banco_mobile/HeadTeacher/stat_ht_term3.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,12 +27,340 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   int currentIndex = 0;
   // -----------------------------------------------------------------
 
+  int d1Start = 0, d1End = 0;
+  int d2Start = 0, d2End = 0;
+  int c3Start = 0, c3End = 0;
+  int c4Start = 0, c4End = 0;
+  int c5Start = 0, c5End = 0;
+  int c6Start = 0, c6End = 0;
+  int p7Start = 0, p7End = 0;
+  int p8Start = 0, p8End = 0;
+  int f9Start = 0, f9End = 0;
+
+  bool gradingLoaded = false;
+
+Future<void> _loadGrading() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      d1Start = data['D1Start'];
+      d1End   = data['D1End'];
+
+      d2Start = data['D2Start'];
+      d2End   = data['D2End'];
+
+      c3Start = data['c3Start'];
+      c3End   = data['c3End'];
+
+      c4Start = data['c4Start'];
+      c4End   = data['c4End'];
+
+      c5Start = data['c5Start'];
+      c5End   = data['c5End'];
+
+      c6Start = data['c6Start'];
+      c6End   = data['c6End'];
+
+      p7Start = data['p7Start'];
+      p7End   = data['p7End'];
+
+      p8Start = data['p8Start'];
+      p8End   = data['p8End'];
+
+      f9Start = data['f9Start'];
+      f9End   = data['f9End'];
+
+      setState(() {
+        gradingLoaded = true;
+      });
+    } catch (e) {
+      print("Error loading grading: $e");
+    }
+  }
+  
   @override
   void initState() {
     super.initState();
+    _loadGrading();      
     _extractSubjects();
+     WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await  _showPerformanceFeedback();
+    });
   }
 
+
+  Future<void> _showPerformanceFeedback() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .collection('Years')
+          .doc(DateTime.now().year.toString())
+          .collection(widget.model)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final students = snapshot.docs
+          .map((doc) => StudentModelP4.fromJson(doc.data()))
+          .toList();
+
+      Map<String, List<int>> subjectScores = {};
+
+      // Collect scores per subject
+      for (var student in students) {
+        for (var subject in student.subjectsScoreTerm2) {
+          subjectScores.putIfAbsent(subject.subjectName, () => []);
+
+          if (subject.scoreBOT != -1) {
+            subjectScores[subject.subjectName]!.add(subject.scoreBOT.toInt());
+          }
+        }
+      }
+
+      // Calculate averages
+      Map<String, double> averages = {};
+
+      subjectScores.forEach((subject, scores) {
+        if (scores.isNotEmpty) {
+          double avg = scores.reduce((a, b) => a + b) / scores.length;
+          averages[subject] = avg;
+        }
+      });
+
+      if (averages.isEmpty) return;
+
+      // Find best and worst subjects
+      String worstSubject = averages.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+
+      String bestSubject = averages.entries
+          .reduce((a, b) => a.value < b.value ? a : b)
+          .key;
+
+      // Show dialog
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.insights, color: mainColor),
+                const SizedBox(width: 5),
+                Text("Performance Insight", style: TextStyle(color: mainColor),),
+              ],
+            ),
+            content: Text(
+              "Students performed better in $bestSubject.\n\n"
+              "However, they should improve in $worstSubject.\n\n",
+              style: const TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                child: const Text("OK"),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Feedback error: $e");
+    }
+  }
+
+  
+  Future<void> _showPerformanceFeedbackMID() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .collection('Years')
+          .doc(DateTime.now().year.toString())
+          .collection(widget.model)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final students = snapshot.docs
+          .map((doc) => StudentModelP4.fromJson(doc.data()))
+          .toList();
+
+      Map<String, List<int>> subjectScores = {};
+
+      // Collect scores per subject
+      for (var student in students) {
+        for (var subject in student.subjectsScoreTerm2) {
+          subjectScores.putIfAbsent(subject.subjectName, () => []);
+
+          if (subject.scoreMT != -1) {
+            subjectScores[subject.subjectName]!.add(subject.scoreMT.toInt());
+          }
+        }
+      }
+
+      // Calculate averages
+      Map<String, double> averages = {};
+
+      subjectScores.forEach((subject, scores) {
+        if (scores.isNotEmpty) {
+          double avg = scores.reduce((a, b) => a + b) / scores.length;
+          averages[subject] = avg;
+        }
+      });
+
+      if (averages.isEmpty) return;
+
+      // Find best and worst subjects
+      String bestSubject = averages.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+
+      String worstSubject = averages.entries
+          .reduce((a, b) => a.value < b.value ? a : b)
+          .key;
+
+      // Show dialog
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.insights, color: mainColor),
+                const SizedBox(width: 5),
+                Text("Performance Insight", style: TextStyle(color: mainColor),),
+              ],
+            ),
+            content: Text(
+              "Students performed better in $bestSubject.\n\n"
+              "However, they should improve in $worstSubject.\n\n",
+              style: const TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                child: const Text("OK"),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Feedback error: $e");
+    }
+  }
+
+  
+  Future<void> _showPerformanceFeedbackEND() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .collection('Years')
+          .doc(DateTime.now().year.toString())
+          .collection(widget.model)
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final students = snapshot.docs
+          .map((doc) => StudentModelP4.fromJson(doc.data()))
+          .toList();
+
+      Map<String, List<int>> subjectScores = {};
+
+      // Collect scores per subject
+      for (var student in students) {
+        for (var subject in student.subjectsScoreTerm2) {
+          subjectScores.putIfAbsent(subject.subjectName, () => []);
+
+          if (subject.scoreEOT != -1) {
+            subjectScores[subject.subjectName]!.add(subject.scoreEOT.toInt());
+          }
+        }
+      }
+
+      // Calculate averages
+      Map<String, double> averages = {};
+
+      subjectScores.forEach((subject, scores) {
+        if (scores.isNotEmpty) {
+          double avg = scores.reduce((a, b) => a + b) / scores.length;
+          averages[subject] = avg;
+        }
+      });
+
+      if (averages.isEmpty) return;
+
+      // Find best and worst subjects
+      String bestSubject = averages.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
+
+      String worstSubject = averages.entries
+          .reduce((a, b) => a.value < b.value ? a : b)
+          .key;
+
+      // Show dialog
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.insights, color: mainColor),
+                const SizedBox(width: 5),
+                Text("Performance Insight", style: TextStyle(color: mainColor),),
+              ],
+            ),
+            content: Text(
+              "Students performed better in $bestSubject.\n\n"
+              "However, they should improve in $worstSubject.\n\n",
+              style: const TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                child: const Text("OK"),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Feedback error: $e");
+    }
+  }
   // ------------------------- Subject Extraction -------------------------
   void _extractSubjects() async {
     // Set loading state
@@ -41,7 +371,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('Schools')
-          .doc(widget.schoolId)
+          .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
           .collection(widget.model)
           .limit(1) // Only need one document to get the subject list
           .get();
@@ -75,6 +405,49 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+  title: const Text('Statistics Term Two'),
+  actions: [
+    PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (value) {
+        if (value == "Term1") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StatHt(
+                model: widget.model,
+                schoolId: widget.schoolId,
+              ),
+            ),
+          );
+        }
+
+        if (value == "Term3") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StatHtTermIII(
+                model: widget.model,
+                schoolId: widget.schoolId,
+              ),
+            ),
+          );
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: "Term1",
+          child: Text("Term 1 Statistics"),
+        ),
+        const PopupMenuItem(
+          value: "Term3",
+          child: Text("Term 3 Statistics"),
+        ),
+      ],
+    )
+  ],
+),
       body: _getSelectedView(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
@@ -99,6 +472,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   }
 
   Widget _buildBOTView() {
+  
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -109,7 +483,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
                 .collection('Schools')
-                .doc(widget.schoolId)
+                .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
                 .collection(widget.model)
                 .snapshots(),
             builder: (context, snapshot) {
@@ -173,6 +547,9 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   }
 
   Widget _buildMIDView() {
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPerformanceFeedbackMID();
+    });
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -183,7 +560,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
                 .collection('Schools')
-                .doc(widget.schoolId)
+                .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
                 .collection(widget.model)
                 .snapshots(),
             builder: (context, snapshot) {
@@ -247,6 +624,9 @@ class _StatHtTermIIState extends State<StatHtTermII> {
   }
 
   Widget _buildENDView() {
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPerformanceFeedbackEND();
+    });
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -257,7 +637,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
                 .collection('Schools')
-                .doc(widget.schoolId)
+                .doc(widget.schoolId).collection('Years').doc(DateTime.now().year.toString())
                 .collection(widget.model)
                 .snapshots(),
             builder: (context, snapshot) {
@@ -652,7 +1032,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       double average = count == 0 ? -1 : total / count;
 
       // 2. Grade the average
-      String division = divCalBOT(average);
+      String division = divCalBOT(average, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End);
 
       gradeCount[division] = (gradeCount[division] ?? 0) + 1;
     }
@@ -698,7 +1078,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       double average = count == 0 ? -1 : total / count;
 
       // 2. Grade the average
-      String division = divCalMid(average);
+      String division = divCalMid(average, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End);
 
       gradeCount[division] = (gradeCount[division] ?? 0) + 1;
     }
@@ -747,7 +1127,7 @@ class _StatHtTermIIState extends State<StatHtTermII> {
       double average = count == 0 ? -1 : total / count;
 
       // 2. Grade the average
-      String division = divCalBOT(average);
+      String division = divCalBOT(average, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End);
 
       gradeCount[division] = (gradeCount[division] ?? 0) + 1;
     }

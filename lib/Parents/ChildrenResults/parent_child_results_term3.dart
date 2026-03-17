@@ -1,28 +1,104 @@
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
+import 'package:banco_mobile/PDF/pdf_term_three.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 // ignore: must_be_immutable
-class ParentsChildProfile extends StatefulWidget {
+class ParentChildResultsTerm3 extends StatefulWidget {
   Stream<QuerySnapshot<Map<String, dynamic>>> snp;
-  ParentsChildProfile({required this.snp, super.key});
+  final String schoolId;
+
+   ParentChildResultsTerm3({
+    required this.snp,
+    required this.schoolId,
+    super.key,
+  });
+  // ParentChildResultsTerm3({required this.snp, super.key});
 
   @override
-  State<ParentsChildProfile> createState() => _ParentsChildProfileState();
+  State<ParentChildResultsTerm3> createState() => _ParentsChildProfileState();
 }
 
-class _ParentsChildProfileState extends State<ParentsChildProfile> {
+class _ParentsChildProfileState extends State<ParentChildResultsTerm3> {
+
+   int d1Start = 0, d1End = 0;
+  int d2Start = 0, d2End = 0;
+  int c3Start = 0, c3End = 0;
+  int c4Start = 0, c4End = 0;
+  int c5Start = 0, c5End = 0;
+  int c6Start = 0, c6End = 0;
+  int p7Start = 0, p7End = 0;
+  int p8Start = 0, p8End = 0;
+  int f9Start = 0, f9End = 0;
+
+  bool gradingLoaded = false;
+
+Future<void> _loadGrading() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      d1Start = data['D1Start'];
+      d1End   = data['D1End'];
+
+      d2Start = data['D2Start'];
+      d2End   = data['D2End'];
+
+      c3Start = data['c3Start'];
+      c3End   = data['c3End'];
+
+      c4Start = data['c4Start'];
+      c4End   = data['c4End'];
+
+      c5Start = data['c5Start'];
+      c5End   = data['c5End'];
+
+      c6Start = data['c6Start'];
+      c6End   = data['c6End'];
+
+      p7Start = data['p7Start'];
+      p7End   = data['p7End'];
+
+      p8Start = data['p8Start'];
+      p8End   = data['p8End'];
+
+      f9Start = data['f9Start'];
+      f9End   = data['f9End'];
+
+      setState(() {
+        gradingLoaded = true;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error loading grading: $e");
+      }
+    }
+  }
+
+@override
+  void initState() {
+    super.initState();
+    _loadGrading();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-         leading: InkWell(child: Icon(Icons.arrow_back_rounded, color: Colors.white,),),
-        backgroundColor: mainColor,
-        title: Text(schoolname, style: TextStyle(color: Colors.white),),
-        centerTitle: true,
-      ),
+      // appBar: AppBar(
+      //    leading: InkWell(child: Icon(Icons.arrow_back_rounded, color: Colors.white,),),
+      //   backgroundColor: mainColor,
+      //   title: Text(schoolname, style: TextStyle(color: Colors.white),),
+      //   centerTitle: true,
+      // ),
       
 
       body: StreamBuilder(
@@ -38,7 +114,8 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
             return const Center(child: Text('No students found.'));
           }
 
-          final students = snapshot.data!.docs
+          final studentDocs = snapshot.data!.docs;
+          final students = studentDocs
               .map((doc) => StudentModelP4.fromJson(doc.data()))
               .toList();
 
@@ -46,6 +123,13 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
             itemCount: students.length,
             itemBuilder: (context, i) {
               final student = students[i];
+              final schoolId = studentDocs[i]
+                  .reference
+                  .parent
+                  .parent
+                  ?.parent
+                  .parent
+                  ?.id;
               return SingleChildScrollView(
                 child: Column(
                   children: [
@@ -112,9 +196,9 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: student.subjectsScore.length,
+                      itemCount: student.subjectsScoreTerm3.length,
                       itemBuilder: (context, index) {
-                        final subject = student.subjectsScore[index];
+                        final subject = student.subjectsScoreTerm3[index];
 
                         return Card(
                           margin: const EdgeInsets.symmetric(
@@ -176,7 +260,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                           ),
                                         ),
                                         Text(
-                                          divCalBOT(subject.scoreBOT),
+                                          divCalBOT(subject.scoreBOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -214,7 +298,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                           ),
                                         ),
                                         Text(
-                                          divCalMid(subject.scoreMT),
+                                          divCalMid(subject.scoreMT,  d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -252,7 +336,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                           ),
                                         ),
                                         Text(
-                                          divEND(subject.scoreEOT),
+                                          divEND(subject.scoreEOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -291,7 +375,7 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                                 ),
                               ),
                               Text(
-                                gradeEot(student.subjectsScore),
+                                gradeEotTerm3(student.subjectsScoreTerm3, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   color: Colors.indigo,
@@ -300,14 +384,80 @@ class _ParentsChildProfileState extends State<ParentsChildProfile> {
                               ),
                             ],
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.download_rounded,
-                              size: 30,
-                              color: Colors.indigo,
-                            ),
-                            onPressed: () {
-                              // TODO: Implement download
+                          FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            future: schoolId == null
+                                ? null
+                                : FirebaseFirestore.instance
+                                    .collection('Schools')
+                                    .doc(schoolId)
+                                    .get(),
+                            builder: (context, schoolSnapshot) {
+                              if (schoolId == null) {
+                                return const Icon(
+                                  Icons.download_rounded,
+                                  size: 30,
+                                  color: Colors.grey,
+                                );
+                              }
+
+                              if (schoolSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                );
+                              }
+
+                              if (!schoolSnapshot.hasData ||
+                                  !schoolSnapshot.data!.exists) {
+                                return const Icon(
+                                  Icons.error,
+                                  size: 30,
+                                  color: Colors.red,
+                                );
+                              }
+
+                              final data = schoolSnapshot.data!.data() ?? {};
+                              final schoolName =
+                                  data['school_name'] ?? 'School';
+                              final contacts = data['contact'] ?? 'N/A';
+                              final address = data['address'] ?? '';
+                              final moto = data['moto'] ?? '';
+                              final pobox = data['pobox'] ?? '';
+                              final email = data['email'] ?? '';
+
+                              return IconButton(
+                                icon: const Icon(
+                                  Icons.download_rounded,
+                                  size: 30,
+                                  color: Colors.indigo,
+                                ),
+                                onPressed: () async {
+                                  await ReportCardPdfTermIII.generate(
+                                      d1Start: d1Start,
+                                      d2Start: d2Start,
+                                      c3Start: c3Start,
+                                      c4Start: c4Start,
+                                      c5Start: c5Start,
+                                      c6Start: c6Start,
+                                      p7Start: p7Start,
+                                      p8Start: p8Start,
+                                      f9Start: f9Start,
+                                      f9End: f9End,
+                                    student: student,
+                                    schoolName: schoolName,
+                                    term: "Term III",
+                                    moto: moto,
+                                    address: address,
+                                    contacts: contacts,
+                                    pobox: pobox,
+                                    email: email,
+                                    year: DateTime.now().year,
+                                  );
+                                },
+                              );
                             },
                           ),
                         ],

@@ -1,13 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/Parents/ChildAttendance/pick_child.dart';
 import 'package:banco_mobile/Events/events_first_screen.dart';
+import 'package:banco_mobile/Parents/about_school_parent.dart';
 import 'package:banco_mobile/Parents/children_results.dart';
 import 'package:banco_mobile/Parents/nottifications.dart';
-import 'package:banco_mobile/Teachers/SettingsTeacher/settings_teacher.dart';
+import 'package:banco_mobile/Parents/parent_settings_page.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,7 +17,11 @@ class ParentsChildrenList extends StatefulWidget {
   final String approve;
   final String schoolname;
 
-  const ParentsChildrenList({super.key, required this.approve, required this.schoolname});
+  const ParentsChildrenList({
+    super.key,
+    required this.approve,
+    required this.schoolname,
+  });
 
   @override
   State<ParentsChildrenList> createState() => _ParentsChildrenListState();
@@ -28,6 +32,10 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
 
   final Color primaryColor = const Color(0xFF2E3E5C); // Dark Blue/Slate
   final Color accentColor = const Color(0xFF1E88E5); // Bright Blue
+  Future<void> _refreshPage() async {
+    setState(() {});
+    await Future.delayed(const Duration(milliseconds: 600));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +93,7 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
                   title: const Text('Settings'),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => SettingsTeacher()),
+                    MaterialPageRoute(builder: (context) => ParentEditProfilePage()),
                   ),
                 ),
                 // Text(
@@ -109,106 +117,110 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
                   stream: FirebaseFirestore.instance
                       .collection('Schools')
                       .doc(schoolId)
-                      // .where(
-                      //   'Banco Primary Schools',
-                      //   isEqualTo: 'Banco Primary Schools',
-                      // )
                       .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const SizedBox();
-                    }
+                  builder: (context, schoolSnapshot) {
+                    if (!schoolSnapshot.hasData) return const SizedBox();
 
-                    final data = snapshot.data;
+                    final data =
+                        schoolSnapshot.data!.data() as Map<String, dynamic>? ??
+                        {};
 
-                    final schoolName = data?['school_name'];
-                    final contact = data?['contact'] ?? '';
-                    final address = data?['address'] ?? '';
-                    final moto = data?['moto'] ?? '';
-                    final pobox = data?['pobox'] ?? '';
-                    final email = data?['email'] ?? '';
-                    final subscription = data?['subscription'] ?? '';
-                    final d1Start = data?['D1Start'] ?? 0;
-                    final d1End = data?['D1End'] ?? 0;
-                    final d2Start = data?['D2Start'] ?? 0;
-                    final d2End = data?['D2End'] ?? 0;
-                    final c3Start = data?['c3Start'] ?? 0;
-                    final c3End = data?['c3End'] ?? 0;
-                    final c4Start = data?['c4Start'] ?? 0;
-                    final c4End = data?['c4End'] ?? 0;
-                    final c5Start = data?['c5Start'] ?? 0;
-                    final c5End = data?['c5End'] ?? 0;
-                    final c6Start = data?['c6Start'] ?? 0;
-                    final c6End = data?['c6End'] ?? 0;
-                    final p7Start = data?['p7Start'] ?? 0;
-                    final p7End = data?['p7End'] ?? 0;
-                    final p8Start = data?['p8Start'] ?? 0;
-                    final p8End = data?['p8End'] ?? 0;
-                    final f9Start = data?['f9Start'] ?? 0;
-                    final f9End = data?['f9End'] ?? 0;
-                    final staffMembers = data?['staffMembers'] ?? {};
-                    final List<StaffMember> staffMembersList = staffMembers
-                        .values
-                        .map<StaffMember>(
-                          (memberData) => StaffMember(
+                    final schoolName = data['school_name'] ?? '';
+                    final contact = data['contact'] ?? '';
+                    final address = data['address'] ?? '';
+                    final moto = data['moto'] ?? '';
+                    final pobox = data['pobox'] ?? '';
+                    final email = data['email'] ?? '';
+                    final subscription = data['subscription'] ?? '';
+
+                    final d1Start = data['D1Start'] ?? 0;
+                    final d1End = data['D1End'] ?? 0;
+                    final d2Start = data['D2Start'] ?? 0;
+                    final d2End = data['D2End'] ?? 0;
+                    final c3Start = data['c3Start'] ?? 0;
+                    final c3End = data['c3End'] ?? 0;
+                    final c4Start = data['c4Start'] ?? 0;
+                    final c4End = data['c4End'] ?? 0;
+                    final c5Start = data['c5Start'] ?? 0;
+                    final c5End = data['c5End'] ?? 0;
+                    final c6Start = data['c6Start'] ?? 0;
+                    final c6End = data['c6End'] ?? 0;
+                    final p7Start = data['p7Start'] ?? 0;
+                    final p7End = data['p7End'] ?? 0;
+                    final p8Start = data['p8Start'] ?? 0;
+                    final p8End = data['p8End'] ?? 0;
+                    final f9Start = data['f9Start'] ?? 0;
+                    final f9End = data['f9End'] ?? 0;
+
+                    // 🔥 Nested staff stream
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Schools')
+                          .doc(schoolId)
+                          .collection('staffMembers')
+                          .snapshots(),
+                      builder: (context, staffSnapshot) {
+                        if (!staffSnapshot.hasData) return const SizedBox();
+
+                        final staffMembersList = staffSnapshot.data!.docs.map((
+                          doc,
+                        ) {
+                          final memberData = doc.data() as Map<String, dynamic>;
+
+                          return StaffMember(
                             firstName: memberData['firstName'] ?? '',
                             secondName: memberData['secondName'] ?? '',
                             role: memberData['role'] ?? '',
                             phone: memberData['phone'] ?? '',
+                            uid: memberData['teacherUid'] ?? '',
+                          );
+                        }).toList();
+
+                        return ListTile(
+                          leading: const Icon(Icons.info, color: Colors.black),
+                          title: const Text(
+                            'About School',
+                            style: TextStyle(color: Colors.black),
                           ),
-                        )
-                        .toList();
-
-                    final linkedParentsData = data?['linkedParents'] ?? {};
-
-                    final List<LinkedParent> linkedParentsList =
-                        linkedParentsData.values.map<LinkedParent>(
-                          (parentData) => LinkedParent(
-                           
-                            parentName: parentData['firstName'] ?? '',
-                             fcmToken: parentData['fcmToken'] ?? '',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AboutSchoolParent(
+                                firstName: firstName,
+                                secondName: secondName,
+                                schoolId: schoolId,
+                                schoolName: schoolName,
+                                pobox: pobox,
+                                address: address,
+                                moto: moto,
+                                contact: contact,
+                                email: email,
+                                subscription: subscription,
+                                d1Start: d1Start,
+                                d1End: d1End,
+                                d2Start: d2Start,
+                                d2End: d2End,
+                                c3Start: c3Start,
+                                c3End: c3End,
+                                c4Start: c4Start,
+                                c4End: c4End,
+                                c5Start: c5Start,
+                                c5End: c5End,
+                                c6Start: c6Start,
+                                c6End: c6End,
+                                p7Start: p7Start,
+                                p7End: p7End,
+                                p8Start: p8Start,
+                                p8End: p8End,
+                                f9Start: f9Start,
+                                f9End: f9End,
+                                staffMembers: staffMembersList,
+                                linkedParents: const [],
+                              ),
+                            ),
                           ),
-                        ).toList();
-
-                    // final role = data['role'] ?? '';
-
-                    return ListTile(
-                      leading: const Icon(Icons.info),
-                      title: const Text('About School'),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AboutSchool(
-                            schoolName: schoolName,
-                            pobox: pobox,
-                            address: address,
-                            moto: moto,
-                            contact: contact,
-                            email: email,
-                            subscription: subscription,
-                            d1Start: d1Start,
-                            d1End: d1End,
-                            d2Start: d2Start,
-                            d2End: d2End,
-                            c3Start: c3Start,
-                            c3End: c3End,
-                            c4Start: c4Start,
-                            c4End: c4End,
-                            c5Start: c5Start,
-                            c5End: c5End,
-                            c6Start: c6Start,
-                            c6End: c6End,
-                            p7Start: p7Start,
-                            p7End: p7End,
-                            p8Start: p8Start,
-                            p8End: p8End,
-                            f9Start: f9Start,
-                            f9End: f9End,
-                            staffMembers: staffMembersList,
-                            linkedParents: linkedParentsList,
-                          ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -217,8 +229,8 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
           );
         },
       ),
-      // backgroundColor: mainColor,`
 
+      // backgroundColor: mainColor,`
       appBar: AppBar(
         backgroundColor: mainColor,
         elevation: 0,
@@ -232,10 +244,18 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
           ),
         ),
         iconTheme: IconThemeData(color: Colors.white),
-      
       ),
 
-      body: _getSelectedView(),
+      body: RefreshIndicator(
+        onRefresh: _refreshPage,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height,
+            child: _getSelectedView(),
+          ),
+        ),
+      ),
 
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -317,9 +337,7 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
                 icon: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(
-                        uid,
-                      ) // replace with dynamic schoolId if needed
+                      .doc(uid) // replace with dynamic schoolId if needed
                       .collection('inbox')
                       .where('status', isEqualTo: 'pending')
                       .snapshots(),
@@ -368,9 +386,7 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
                 activeIcon: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(
-                        uid,
-                      ) // replace with dynamic schoolId if needed
+                      .doc(uid) // replace with dynamic schoolId if needed
                       .collection('inbox')
                       .where('status', isEqualTo: 'pending')
                       .snapshots(),
@@ -427,9 +443,9 @@ class _ParentsChildrenListState extends State<ParentsChildrenList> {
 
   Widget _getSelectedView() {
     if (currentIndex == 0) return ChildrenResults(approve: widget.approve);
-    if (currentIndex == 1) return EventsFirstScreen(approve: widget.approve,);
+    if (currentIndex == 1) return EventsFirstScreen(approve: widget.approve);
     if (currentIndex == 2) return PickChild(approve: widget.approve);
-    return  Nottifications(approve: widget.approve);
+    return Nottifications(approve: widget.approve);
   }
 
   Future<void> logout(BuildContext context) async {

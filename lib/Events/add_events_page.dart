@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 
 class AddEventsPage extends StatefulWidget {
   final String schoolId;
-  const AddEventsPage({super.key, required this.schoolId});
+  final String? eventId; // <-- for editing
+  final Map<String, dynamic>? existingEvent; // <-- for editing
+  const AddEventsPage({super.key, required this.schoolId, required this.eventId, required this.existingEvent});
 
   @override
   State<AddEventsPage> createState() => _AddEventsPageState();
@@ -56,45 +58,54 @@ class _AddEventsPageState extends State<AddEventsPage> {
   /* ---------------- SAVE EVENT ---------------- */
 
   Future<void> _saveEvent() async {
-    if (!_formKey.currentState!.validate()) return;
+  print("SAVE STARTED");
 
-    if (_selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select date & time")),
-      );
-      return;
-    }
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('Schools')
-          .doc(widget.schoolId)
-          .collection('events')
-          .add({
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'location': _locationController.text.trim(),
-        'date': Timestamp.fromDate(_selectedDateTime!),
-        'schoolId': widget.schoolId,
-        'createdAt': Timestamp.now(),
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Event added successfully")),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  if (_selectedDateTime == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select date & time")),
+    );
+    return;
   }
+
+  setState(() => _isLoading = true);
+
+  try {
+    print("WRITING TO FIRESTORE");
+
+    await FirebaseFirestore.instance
+        .collection('Schools')
+        .doc(widget.schoolId)
+        .collection('events')
+        .add({
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'location': _locationController.text.trim(),
+      'date': Timestamp.fromDate(_selectedDateTime!),
+      'schoolId': widget.schoolId,
+      'createdAt': Timestamp.now(),
+    });
+
+    print("WRITE SUCCESS");
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Event added successfully")),
+      );
+      Navigator.pop(context);
+    }
+  } catch (e) {
+    print("ERROR");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Error adding event")),
+    );
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
+
 
   /* ---------------- UI ---------------- */
 

@@ -51,7 +51,7 @@ class _CreateAccountParentState extends State<CreateAccountParent> {
       } catch (e) {
         // Handle errors here, e.g., show a snackbar
         if (kDebugMode) {
-          print('Error creating account: $e');
+          print('Error creating account');
         }
         // showsnackBar(context, 'Error creating account: $e');
       }

@@ -1,3 +1,4 @@
+import 'package:banco_mobile/Auth/create_account_admin.dart';
 import 'package:banco_mobile/Auth/create_account_headteacher.dart';
 import 'package:banco_mobile/Auth/create_account_teacher.dart';
 import 'package:banco_mobile/Auth/security_create_account.dart';
@@ -46,23 +47,31 @@ class _StaffSelectState extends State<StaffSelect> {
               );
             },
           ),
-          ListTile(
-            leading: CircleAvatar(
-              // backgroundColor: ,
-              child: Text(
-                'DH',
-                style: TextStyle(
-                  // color: theme.primaryColor,
-                  fontWeight: FontWeight.bold,
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CreateAccountAdmin()),
+              );
+            },
+            child: ListTile(
+              leading: CircleAvatar(
+                // backgroundColor: ,
+                child: Text(
+                  'Ad',
+                  style: TextStyle(
+                    // color: theme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+              title: Text(
+                'Administrator',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              subtitle: const Text("Access to all classes"),
+              trailing: const Icon(Icons.chevron_right_rounded),
             ),
-            title: Text(
-              'Adminstrator',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            subtitle: const Text("Access to all classes"),
-            trailing: const Icon(Icons.chevron_right_rounded),
           ),
           InkWell(
             child: ListTile(

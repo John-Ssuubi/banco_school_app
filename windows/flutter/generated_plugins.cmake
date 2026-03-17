@@ -3,14 +3,19 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  audioplayers_windows
+  awesome_notifications
+  awesome_notifications_core
   cloud_firestore
   firebase_auth
   firebase_core
+  flutter_timezone
   permission_handler_windows
   printing
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  flutter_local_notifications_windows
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

@@ -91,17 +91,19 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
         const SnackBar(content: Text('✅ Head Teacher registered successfully')),
       );
 
-      final schoolref = firestore.collection('Schools').doc(selectedSchoolId);
+      final schoolref = firestore.collection('Schools').doc(selectedSchoolId).collection('staffMembers').doc(user.uid);
+
       await schoolref.set({
-        'staffMembers': {
-          user.uid: {
+        // 'staffMembers': {
+         
             'role': 'headteacher',
             'firstName': _firstNameController.text.trim(),
             'secondName': _secondNameController.text.trim(),
             'phone': _phoneController.text.trim(),
             'email': user.email,
-          },
-        },
+            'teacherUid': user.uid, 
+          
+        // },
       }, SetOptions(merge: true));
       Navigator.pushAndRemoveUntil(
         context,
@@ -206,7 +208,7 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
                   }
 
                   return DropdownButtonFormField<String>(
-                    value: selectedSchoolId,
+                    initialValue: selectedSchoolId,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       hintText: 'Select School',

@@ -53,6 +53,7 @@ class _NewChatState extends State<NewChat> {
                 final String schoolId = child['schoolId'];
                 final String parentFirstName = data['firstName'] ?? '';
                 final String parentSecondName = data['secondName'] ?? '';
+                final String schoolName = child['schoolName'] ?? 'School';
 
                 return ListTile(
                   title: Text(childName),
@@ -66,6 +67,7 @@ class _NewChatState extends State<NewChat> {
                           myRole: 'parent',
                           firstName: parentFirstName,
                           secondName: parentSecondName,
+                          schoolName: schoolName,
                           // parentId: userId,
                         ),
                       ),

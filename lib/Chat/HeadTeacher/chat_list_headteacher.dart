@@ -1,5 +1,6 @@
+// ignore_for_file: prefer_interpolation_to_compose_strings
+
 import 'package:banco_mobile/Chat/HeadTeacher/chatmain_headteacher.dart';
-import 'package:banco_mobile/Chat/HeadTeacher/new_chat_headteacher.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:firebase_auth/firebase_auth.dart';

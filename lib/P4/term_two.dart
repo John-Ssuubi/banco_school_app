@@ -1,30 +1,116 @@
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
+import 'package:banco_mobile/PDF/pdf_term_two.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/editable_score_field.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class TermTwo extends StatefulWidget {
   final String model;
   final String schoolId;
-  const TermTwo({super.key, required this.model, required this.schoolId});
+  final String studentId;
+
+  const TermTwo({
+    super.key,
+    required this.model,
+    required this.schoolId,
+    required this.studentId,
+  });
 
   @override
   State<TermTwo> createState() => _TermTwoState();
 }
 
 class _TermTwoState extends State<TermTwo> {
+  late PageController _pageController;
+
+   int d1Start = 0, d1End = 0;
+  int d2Start = 0, d2End = 0;
+  int c3Start = 0, c3End = 0;
+  int c4Start = 0, c4End = 0;
+  int c5Start = 0, c5End = 0;
+  int c6Start = 0, c6End = 0;
+  int p7Start = 0, p7End = 0;
+  int p8Start = 0, p8End = 0;
+  int f9Start = 0, f9End = 0;
+
+  bool gradingLoaded = false;
+
+Future<void> _loadGrading() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .get();
+
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+
+      d1Start = data['D1Start'];
+      d1End   = data['D1End'];
+
+      d2Start = data['D2Start'];
+      d2End   = data['D2End'];
+
+      c3Start = data['c3Start'];
+      c3End   = data['c3End'];
+
+      c4Start = data['c4Start'];
+      c4End   = data['c4End'];
+
+      c5Start = data['c5Start'];
+      c5End   = data['c5End'];
+
+      c6Start = data['c6Start'];
+      c6End   = data['c6End'];
+
+      p7Start = data['p7Start'];
+      p7End   = data['p7End'];
+
+      p8Start = data['p8Start'];
+      p8End   = data['p8End'];
+
+      f9Start = data['f9Start'];
+      f9End   = data['f9End'];
+
+      setState(() {
+        gradingLoaded = true;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error loading grading: $e");
+      }
+    }
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGrading();
+    _pageController = PageController(initialPage: 0); // will update after snapshot
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: Colors.grey,
-      body: StreamBuilder(
+      body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Schools')
             .doc(widget.schoolId)
+            .collection('Years')
+            .doc(DateTime.now().year.toString())
             .collection(widget.model)
-            .snapshots(),
+            .snapshots(), // fetch all students
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -37,13 +123,26 @@ class _TermTwoState extends State<TermTwo> {
           }
 
           final students = snapshot.data!.docs
-              .map((doc) => StudentModelP4.fromJson(doc.data()))
+              .map((doc) =>
+                  StudentModelP4.fromJson(doc.data() as Map<String, dynamic>))
               .toList();
 
+          // find index of student to start at
+          final initialIndex =
+              students.indexWhere((s) => s.idNin == widget.studentId);
+
+          if (initialIndex != -1 && _pageController.hasClients == false) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _pageController.jumpToPage(initialIndex);
+            });
+          }
+
           return PageView.builder(
+            controller: _pageController,
             itemCount: students.length,
             itemBuilder: (context, i) {
               final student = students[i];
+
               return SingleChildScrollView(
                 child: Column(
                   children: [
@@ -67,15 +166,14 @@ class _TermTwoState extends State<TermTwo> {
                                 Text(
                                   student.studentName ?? 'No Name',
                                   style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white
-                                  ),
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Class: ${student.classIn}  |  Year: ${DateTime.now().year}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
                                   ),
@@ -83,7 +181,7 @@ class _TermTwoState extends State<TermTwo> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'SID: ${student.idNin}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.white,
                                   ),
@@ -105,6 +203,7 @@ class _TermTwoState extends State<TermTwo> {
                     ),
 
                     const SizedBox(height: 16),
+
                     // --- Subject Cards ---
                     ListView.builder(
                       shrinkWrap: true,
@@ -115,41 +214,34 @@ class _TermTwoState extends State<TermTwo> {
 
                         return Card(
                           margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
+                              horizontal: 16, vertical: 8),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                              borderRadius: BorderRadius.circular(16)),
                           elevation: 2,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                                horizontal: 16, vertical: 12),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   subject.subjectName,
                                   style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600),
                                 ),
                                 const Divider(),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceAround,
                                   children: [
-                                    // --- BOT ---
+                                    // BOT
                                     Column(
                                       children: [
                                         const Text(
                                           'BOT',
                                           style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         SizedBox(
                                           width: 80,
@@ -164,69 +256,61 @@ class _TermTwoState extends State<TermTwo> {
                                             time: 'BOT',
                                           ),
                                         ),
-                                        Text(
-                                          divCalBOT(subject.scoreBOT),
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                          ),
-                                        ),
+                                        Text(divCalBOT(subject.scoreBOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                            style: const TextStyle(
+                                                color: Colors.grey)),
                                       ],
                                     ),
-                                    // --- MID ---
+                                    // MID
                                     Column(
                                       children: [
                                         const Text(
                                           'MID',
                                           style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         SizedBox(
                                           width: 80,
                                           height: 40,
                                           child: EditableScoreFieldTerm2(
-                                            model:  widget.model   ,
+                                            model: widget.model,
+                                            schoolId: widget.schoolId,
                                             studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreMT,
                                             scoreKey: 'scoreMT',
-                                            time: 'MID', schoolId: widget.schoolId,
+                                            time: 'MID',
                                           ),
                                         ),
-                                        Text(
-                                          divCalMid(subject.scoreMT),
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                          ),
-                                        ),
+                                        Text(divCalMid(subject.scoreMT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                            style: const TextStyle(
+                                                color: Colors.grey)),
                                       ],
                                     ),
-                                    // --- END ---
+                                    // END
                                     Column(
                                       children: [
                                         const Text(
                                           'END',
                                           style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                              fontWeight: FontWeight.bold),
                                         ),
                                         SizedBox(
                                           width: 80,
                                           height: 40,
                                           child: EditableScoreFieldTerm2(
+                                            model: widget.model,
+                                            schoolId: widget.schoolId,
                                             studentId: student.idNin!,
                                             subjectName: subject.subjectName,
                                             initialScore: subject.scoreEOT,
                                             scoreKey: 'scoreEOT',
-                                            time: 'END', model: widget.model, schoolId: widget.schoolId,
+                                            time: 'END',
                                           ),
                                         ),
-                                        Text(
-                                          divEND(subject.scoreEOT),
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                          ),
-                                        ),
+                                        Text(divEND(subject.scoreEOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                            style: const TextStyle(
+                                                color: Colors.grey)),
                                       ],
                                     ),
                                   ],
@@ -262,7 +346,7 @@ class _TermTwoState extends State<TermTwo> {
                                 ),
                               ),
                               Text(
-                                gradeEotTerm2(student.subjectsScoreTerm2),
+                                gradeEotTerm2(student.subjectsScoreTerm2, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   color: Colors.black,
@@ -271,14 +355,63 @@ class _TermTwoState extends State<TermTwo> {
                               ),
                             ],
                           ),
-                          IconButton(
-                            icon:  Icon(
-                              Icons.download_rounded,
-                              size: 30,
-                              color: mainColor,
-                            ),
-                            onPressed: () {
-                              // TODO: Implement download
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('Schools')
+                                .doc(widget.schoolId)
+                                .snapshots(),
+                            builder: (context, asyncSnapshot) {
+                              final data = asyncSnapshot.data;
+                              final schoolName = data != null
+                                  ? data['school_name'] ?? 'School'
+                                  : 'School';
+                              final contacts = data != null
+                                  ? data['contact'] ?? 'N/A'
+                                  : 'N/A';
+                              final address = data?['address'] ?? '';
+                              final moto = data?['moto'] ?? '';
+                              final pobox = data?['pobox'] ?? '';
+                              final email = data?['email'] ?? '';
+
+                              if (asyncSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const CircularProgressIndicator();
+                              }
+                              if (asyncSnapshot.hasError) {
+                                return const Icon(Icons.error,
+                                    color: Colors.red);
+                              }
+
+                              return IconButton(
+                                icon: Icon(
+                                  Icons.download_rounded,
+                                  size: 30,
+                                  color: mainColor,
+                                ),
+                                onPressed: () async {
+                                  await ReportCardPdfTermII.generate(
+                                     d1Start: d1Start,
+                                      d2Start: d2Start,
+                                      c3Start: c3Start,
+                                      c4Start: c4Start,
+                                      c5Start: c5Start,
+                                      c6Start: c6Start,
+                                      p7Start: p7Start,
+                                      p8Start: p8Start,
+                                      f9Start: f9Start,
+                                      f9End: f9End,
+                                    student: student,
+                                    schoolName: schoolName,
+                                    term: "Term II",
+                                    moto: moto,
+                                    address: address,
+                                    contacts: contacts,
+                                    pobox: pobox,
+                                    email: email,
+                                    year: DateTime.now().year,
+                                  );
+                                },
+                              );
                             },
                           ),
                         ],

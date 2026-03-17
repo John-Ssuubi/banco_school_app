@@ -1,5 +1,5 @@
 name: banco_mobile
-description: "A new Flutter project."
+description: "Best School App in Uganda."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+5
 
 environment:
   sdk: ^3.8.1
@@ -30,24 +30,31 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^4.3.0
-  firebase_auth: ^6.1.3
-  cloud_firestore: ^6.1.1
+  firebase_core: ^4.5.0  
+  audioplayers: ^5.2.1
+  firebase_auth: ^6.2.0
+  cloud_firestore: ^6.1.3
   hive_flutter: ^1.1.0
   hive: ^2.2.2
   mobile_scanner: ^7.1.3
   permission_handler: ^11.3.1
-  firebase_messaging: ^16.1.0
-  flutter_local_notifications: ^17.2.2
-  syncfusion_flutter_charts: ^26.1.39
-  intl: ^0.19.0
+  firebase_messaging: ^16.1.2
+  flutter_local_notifications: ^21.0.0
+  syncfusion_flutter_charts: ^32.2.9
+  intl: ^0.20.0
   table_calendar: ^3.0.9
   cloud_functions: ^6.0.5
-  dart_firebase_functions: 
+  # dart_firebase_functions: ^0.0.1-dev.1
   timeago: ^3.6.0
   google_sign_in: ^7.2.0
   pdf: ^3.10.7
   printing: ^5.12.0
+  fl_chart: ^0.66.2
+  timezone: ^0.11.0
+  flutter_timezone: ^5.0.1
+  awesome_notifications: ^0.11.0
+  awesome_notifications_core: ^0.10.1
+  # flutter_local_notifications_plus: ^17.2.5
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -60,6 +67,8 @@ dev_dependencies:
     sdk: flutter
   hive_generator: ^2.0.1
   build_runner: ^2.4.6
+  firebase_admin: ^0.3.1+1
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

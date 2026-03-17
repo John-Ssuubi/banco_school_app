@@ -1,8 +1,9 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, unused_field
 
 import 'package:banco_mobile/Auth/auth_student.dart';
 import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
+import 'package:banco_mobile/Notifications/local_notifications.dart';
 import 'package:banco_mobile/Teachers/teacher_classes_stat.dart';
 import 'package:banco_mobile/Teachers/SettingsTeacher/settings_teacher.dart';
 import 'package:banco_mobile/Teachers/attendance_Teacher.dart';
@@ -34,6 +35,14 @@ class _TeacherHomeState extends State<TeacherHome> {
   static const Color accentColor = Color(0xFF1E88E5);
 
   @override
+  void initState() {
+    super.initState();
+      AwesomeNotificationsEngine.scheduledNotificationAwesome();
+    // LocalNotifications.showNotification();
+    // AwesomeNotificationsEngine.showAwesomeNotification();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
@@ -56,9 +65,14 @@ class _TeacherHomeState extends State<TeacherHome> {
             }
 
             if (userSnapshot.hasError || !userSnapshot.data!.exists) {
-              return  Scaffold(
+              return Scaffold(
                 backgroundColor: mainColor,
-                body: Center(child: Text('Unable to load user data', style: TextStyle(color: mainColor), )),
+                body: Center(
+                  child: Text(
+                    'Unable to load user data',
+                    style: TextStyle(color: mainColor),
+                  ),
+                ),
               );
             }
             final userData = userSnapshot.data!.data() as Map<String, dynamic>;
@@ -82,217 +96,224 @@ class _TeacherHomeState extends State<TeacherHome> {
 
   AppBar _buildAppBar() {
     return AppBar(
-      
       iconTheme: const IconThemeData(color: Colors.white),
       backgroundColor: mainColor,
       elevation: 0,
       centerTitle: true,
-      title:  Text(
+      title: Text(
         schoolname,
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
-      ));
-      // iconTheme: const IconThemeData(color: primaryColor),
-     
+      ),
+    );
+    // iconTheme: const IconThemeData(color: primaryColor),
   }
 
   Container _buildDrawer() {
-    return   Container(
+    return Container(
       color: Colors.white,
 
-      
       child: StreamBuilder(
-          stream: FirebaseFirestore.instance
-              .collection('Users')
-              .doc(FirebaseAuth.instance.currentUser!.uid)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData || !snapshot.data!.exists) {
-              return const SizedBox();
-            }
-      
-            final data = snapshot.data!.data() as Map<String, dynamic>;
-      
-            final firstName = data['firstName'] ?? '';
-            final secondName = data['secondName'] ?? '';
-            final role = data['role'] ?? '';
-            final schoolId = data['schoolId'] ?? '';
-      
-            return Drawer(
-              
-              // backgroundColor: mainColor,
-              // width: double.infinity - 20,
-              child: Column(
-                children: [
-                  UserAccountsDrawerHeader(
-                    decoration: BoxDecoration(color: mainColor),
-                    accountName: Text(
-                      "$firstName $secondName",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+        stream: FirebaseFirestore.instance
+            .collection('Users')
+            .doc(FirebaseAuth.instance.currentUser!.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const SizedBox();
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+
+          final firstName = data['firstName'] ?? '';
+          final secondName = data['secondName'] ?? '';
+          final role = data['role'] ?? '';
+          final schoolId = data['schoolId'] ?? '';
+
+          return Drawer(
+            // backgroundColor: mainColor,
+            // width: double.infinity - 20,
+            child: Column(
+              children: [
+                UserAccountsDrawerHeader(
+                  decoration: BoxDecoration(color: mainColor),
+                  accountName: Text(
+                    "$firstName $secondName",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  accountEmail: Text(
+                    role.toUpperCase(), // e.g HEADTEACHER / TEACHER
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  currentAccountPicture: CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.school, size: 45, color: mainColor),
+                  ),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.home, color: Colors.black),
+                  title: const Text(
+                    'Home',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  onTap: () => Navigator.pop(
+                    context,
+                    // MaterialPageRoute(builder: (context) => const HomePage())
+                  ),
+                ),
+
+                ListTile(
+                  leading: const Icon(Icons.settings, color: Colors.black),
+                  title: const Text(
+                    'Settings',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingsTeacher()),
+                  ),
+                ),
+                Text(
+                  'Account',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: mainColor,
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    logout(context);
+                  },
+                  child: ListTile(
+                    leading: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(Icons.logout, color: Colors.black),
                     ),
-                    accountEmail: Text(
-                      role.toUpperCase(), // e.g HEADTEACHER / TEACHER
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    currentAccountPicture: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.school, size: 45, color: mainColor),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.black),
                     ),
                   ),
-      
-                  ListTile(
-                    leading: const Icon(Icons.home,
-                    color: Colors.black,),
-                    title: const Text('Home', style: TextStyle(color: Colors.black),),
-                    onTap: () => Navigator.pop(
-                      context,
-                      // MaterialPageRoute(builder: (context) => const HomePage())
-                    ),
-                  ),
-      
-                  ListTile(
-                    leading: const Icon(Icons.settings, color: Colors.black),
-                    title: const Text('Settings', style: TextStyle(color: Colors.black),),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SettingsTeacher()),
-                    ),
-                  ),
-                  Text(
-                    'Account',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: mainColor,
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () {
-                      logout(context);
-                    },
-                    child: ListTile(
-                      leading: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(Icons.logout, color: Colors.black),
-                      ),
-                      title: const Text('Logout', style: TextStyle(color: Colors.black),),
-                    ),
-                  ),
-                  StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('Schools', )
-                        .doc(schoolId)
-                        // .where(
-                        //   'Banco Primary Schools',
-                        //   isEqualTo: 'Banco Primary Schools',
-                        // )
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox();
-                      }
-      
-                      final data = snapshot.data;
-      
-                      final schoolName = data?['school_name'];
-                      final contact = data?['contact'] ?? '';
-                      final address = data?['address'] ?? '';
-                      final moto = data?['moto'] ?? '';
-                      final pobox = data?['pobox'] ?? '';
-                      final email = data?['email'] ?? '';
-                      final subscription = data?['subscription'] ?? '';
-                      final d1Start = data?['D1Start'] ?? 0;
-                      final d1End = data?['D1End'] ?? 0;
-                      final d2Start = data?['D2Start'] ?? 0;
-                      final d2End = data?['D2End'] ?? 0;
-                      final c3Start = data?['c3Start'] ?? 0;
-                      final c3End = data?['c3End'] ?? 0;
-                      final c4Start = data?['c4Start'] ?? 0;
-                      final c4End = data?['c4End'] ?? 0;
-                      final c5Start = data?['c5Start'] ?? 0;
-                      final c5End = data?['c5End'] ?? 0;
-                      final c6Start = data?['c6Start'] ?? 0;
-                      final c6End = data?['c6End'] ?? 0;
-                      final p7Start = data?['p7Start'] ?? 0;
-                      final p7End = data?['p7End'] ?? 0;
-                      final p8Start = data?['p8Start'] ?? 0;
-                      final p8End = data?['p8End'] ?? 0;
-                      final f9Start = data?['f9Start'] ?? 0;
-                      final f9End = data?['f9End'] ?? 0;
-                      final staffMembers = data?['staffMembers'] ?? {};
-                      final List<StaffMember> staffMembersList = staffMembers
-                          .values
-                          .map<StaffMember>(
-                            (memberData) => StaffMember(
-                              firstName: memberData['firstName'] ?? '',
-                              secondName: memberData['secondName'] ?? '',
-                              role: memberData['role'] ?? '',
-                              phone: memberData['phone'] ?? '',
-                            ),
-                          )
-                          .toList();
-      
-                      final linkedParentsData = data?['linkedParents'] ?? {};
-      
-                      final List<LinkedParent> linkedParentsList =
-                          linkedParentsData.values.map<LinkedParent>(
-                            (parentData) => LinkedParent(
-                             
-                              parentName: parentData['firstName'] ?? '',
-                               fcmToken: parentData['fcmToken'] ?? '',
-                            ),
-                          ).toList();
-      
-                      // final role = data['role'] ?? '';
-      
-                      return ListTile(
-                        leading: const Icon(Icons.info, color: Colors.black),
-                        title: const Text('About School', style: TextStyle(color: Colors.black),),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AboutSchool(
-                              schoolName: schoolName,
-                              pobox: pobox,
-                              address: address,
-                              moto: moto,
-                              contact: contact,
-                              email: email,
-                              subscription: subscription,
-                              d1Start: d1Start,
-                              d1End: d1End,
-                              d2Start: d2Start,
-                              d2End: d2End,
-                              c3Start: c3Start,
-                              c3End: c3End,
-                              c4Start: c4Start,
-                              c4End: c4End,
-                              c5Start: c5Start,
-                              c5End: c5End,
-                              c6Start: c6Start,
-                              c6End: c6End,
-                              p7Start: p7Start,
-                              p7End: p7End,
-                              p8Start: p8Start,
-                              p8End: p8End,
-                              f9Start: f9Start,
-                              f9End: f9End,
-                              staffMembers: staffMembersList,
-                              linkedParents: linkedParentsList,
+                ),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, schoolSnapshot) {
+                    if (!schoolSnapshot.hasData) return const SizedBox();
+
+                    final data =
+                        schoolSnapshot.data!.data() as Map<String, dynamic>? ??
+                        {};
+
+                    final schoolName = data['school_name'] ?? '';
+                    final contact = data['contact'] ?? '';
+                    final address = data['address'] ?? '';
+                    final moto = data['moto'] ?? '';
+                    final pobox = data['pobox'] ?? '';
+                    final email = data['email'] ?? '';
+                    final subscription = data['subscription'] ?? '';
+
+                    final d1Start = data['D1Start'] ?? 0;
+                    final d1End = data['D1End'] ?? 0;
+                    final d2Start = data['D2Start'] ?? 0;
+                    final d2End = data['D2End'] ?? 0;
+                    final c3Start = data['c3Start'] ?? 0;
+                    final c3End = data['c3End'] ?? 0;
+                    final c4Start = data['c4Start'] ?? 0;
+                    final c4End = data['c4End'] ?? 0;
+                    final c5Start = data['c5Start'] ?? 0;
+                    final c5End = data['c5End'] ?? 0;
+                    final c6Start = data['c6Start'] ?? 0;
+                    final c6End = data['c6End'] ?? 0;
+                    final p7Start = data['p7Start'] ?? 0;
+                    final p7End = data['p7End'] ?? 0;
+                    final p8Start = data['p8Start'] ?? 0;
+                    final p8End = data['p8End'] ?? 0;
+                    final f9Start = data['f9Start'] ?? 0;
+                    final f9End = data['f9End'] ?? 0;
+
+                    // 🔥 Nested staff stream
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Schools')
+                          .doc(schoolId)
+                          .collection('staffMembers')
+                          .snapshots(),
+                      builder: (context, staffSnapshot) {
+                        if (!staffSnapshot.hasData) return const SizedBox();
+
+                        final staffMembersList = staffSnapshot.data!.docs.map((
+                          doc,
+                        ) {
+                          final memberData = doc.data() as Map<String, dynamic>;
+
+                          return StaffMember(
+                            uid: memberData['teacherUid'],
+
+                            firstName: memberData['firstName'] ?? '',
+                            secondName: memberData['secondName'] ?? '',
+                            role: memberData['role'] ?? '',
+                            phone: memberData['phone'] ?? '',
+                          );
+                        }).toList();
+
+                        return ListTile(
+                          leading: const Icon(Icons.info, color: Colors.black),
+                          title: const Text(
+                            'About School',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AboutSchool(
+                                schoolName: schoolName,
+                                pobox: pobox,
+                                address: address,
+                                moto: moto,
+                                contact: contact,
+                                email: email,
+                                subscription: subscription,
+                                d1Start: d1Start,
+                                d1End: d1End,
+                                d2Start: d2Start,
+                                d2End: d2End,
+                                c3Start: c3Start,
+                                c3End: c3End,
+                                c4Start: c4Start,
+                                c4End: c4End,
+                                c5Start: c5Start,
+                                c5End: c5End,
+                                c6Start: c6Start,
+                                c6End: c6End,
+                                p7Start: p7Start,
+                                p7End: p7End,
+                                p8Start: p8Start,
+                                p8End: p8End,
+                                f9Start: f9Start,
+                                f9End: f9End,
+                                staffMembers: staffMembersList,
+                                linkedParents: const [], schoolId: schoolId,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -319,7 +340,7 @@ class _TeacherHomeState extends State<TeacherHome> {
           activeIcon: Icon(Icons.check_circle),
           label: 'Attendance',
         ),
-         BottomNavigationBarItem(
+        BottomNavigationBarItem(
           icon: Icon(Icons.bar_chart_outlined),
           activeIcon: Icon(Icons.bar_chart),
           label: 'Statistics',
@@ -343,7 +364,11 @@ class _TeacherHomeState extends State<TeacherHome> {
           date: DateTime.now().toIso8601String().split('T').first,
         );
       default:
-        return TeacherClassesStat(approve: widget.approve, classes: userData['linkedClasses'] ?? [], schoolId:  userData['schoolId'] ?? '',);
+        return TeacherClassesStat(
+          approve: widget.approve,
+          classes: userData['linkedClasses'] ?? [],
+          schoolId: userData['schoolId'] ?? '',
+        );
     }
   }
 

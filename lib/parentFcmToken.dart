@@ -8,260 +8,278 @@ import 'package:flutter/foundation.dart';
 String? _fcmToken;
 bool _isSaving = false;
 
-Future<void> setupFcmForm(String parentName, String parentSecondName, String parentPhone) async {
+
+Future<void> setupFcmForm(
+  String parentName,
+  String parentSecondName,
+  String parentPhone,
+) async {
   try {
-    var user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus !=
+        AuthorizationStatus.authorized) {
       return;
     }
 
-    NotificationSettings settings = await FirebaseMessaging.instance
-        .requestPermission(alert: true, badge: true, sound: true);
+    final token = await FirebaseMessaging.instance.getToken();
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      if (kDebugMode) {
-        print('User granted permissionnnnnnnnnnnnnnn');
-      }
+    if (token == null) return;
 
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        _fcmToken = token;
-        await _saveParentFcmToken(
-          token,
-          user.email ?? '',
-          // user.displayName ?? '',
-          parentName,
-          parentSecondName, 
-          parentPhone,
-        );
-      }
+    _fcmToken = token;
 
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-        _saveParentFcmToken(newToken, user.email ?? '',  parentName, parentSecondName, parentPhone);
-      });
-    } else {}
-  } catch (e) {}
+    await _saveParentFcmToken(
+      token,
+      user.email ?? '',
+      parentName,
+      parentSecondName,
+      parentPhone,
+    );
+
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      _saveParentFcmToken(
+        newToken,
+        user.email ?? '',
+        parentName,
+        parentSecondName,
+        parentPhone,
+      );
+    });
+  } catch (e) {
+    if (kDebugMode) {
+      print("FCM setup error: $e");
+    }
+  }
 }
-
 
 
 Future<void> setupFcm() async {
   try {
-    var user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus !=
+        AuthorizationStatus.authorized) {
       return;
     }
 
-    NotificationSettings settings = await FirebaseMessaging.instance
-        .requestPermission(alert: true, badge: true, sound: true);
+    final token = await FirebaseMessaging.instance.getToken();
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      if (kDebugMode) {
-        print('User granted permissionnnnnnnnnnnnnnn');
-      }
+    if (token == null) return;
 
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        _fcmToken = token;
-        await _saveParentFcmTokenAuth(
-          token,
-          user.email ?? '',
-          // user.displayName ?? '',
-          
-        );
-      }
+    _fcmToken = token;
 
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-        _saveParentFcmTokenAuth(newToken, user.email ?? '');
-      });
-    } else {}
-  } catch (e) {}
-}
+    await _saveParentFcmTokenAuth(token, user.email ?? '');
 
-/// Save the token in parent record and link to children
-Future<void> _saveParentFcmToken(String token, String parentEmail, String parentName, String parentSecondName, String parentPhone) async {
-  _isSaving = true;
-
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    return;
-  }
-
-  final parentRef = FirebaseFirestore.instance
-      .collection('Users')
-      .doc(user.uid);
-
-  // Save the token in parent record
-
-  // Get the parent's linked children
-  final parentDoc = await parentRef.get();
-  final parentData = parentDoc.data();
-  if (parentData == null) return;
-
-  // Verify parent role
-  if (parentData['role'] != 'parent') {
-    return;
-  } else {
-    await parentRef.set({
-      'fcmToken': token,
-      "email": parentEmail,
-    }, SetOptions(merge: true));
-
-    final linkedChildren = parentData['linkedChildren'] as List<dynamic>?;
-
-    if (linkedChildren == null || linkedChildren.isEmpty) {
-      return;
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      _saveParentFcmTokenAuth(newToken, user.email ?? '');
+    });
+  } catch (e) {
+    if (kDebugMode) {
+      print("FCM auth setup error: $e");
     }
-
-    // Loop through each linked child and update their record
-    for (var child in linkedChildren) {
-      final schoolId = child['schoolId'];
-      final idNin = child['idNin'];
-
-      // Loop through all student class collections
-      final classCollections = [
-        'studentModelP1',
-        'studentModelP2',
-        'studentModelP3',
-        'studentModelP4',
-        'studentModelP5',
-        'studentModelP6',
-        'studentModelP7',
-      ];
-
-      final schoolref = FirebaseFirestore.instance
-          .collection('Schools')
-          .doc(schoolId);
-          
-      await schoolref.set({
-        'linkedParents': {
-          user.uid: {
-            'role': 'parent',
-            'firstName': parentName,
-            'secondName': parentSecondName,
-            'phone': parentPhone,
-            'fcmToken': token,
-            'approved': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          }
-        }
-      }, SetOptions(merge: true)
-            );
-
-      for (final collection in classCollections) {
-        final query = await FirebaseFirestore.instance
-            .collection('Schools')
-            .doc(schoolId)
-            .collection(collection)
-            .where('idNin', isEqualTo: idNin)
-            .limit(1)
-            .get();
-
-        if (query.docs.isNotEmpty) {
-          await query.docs.first.reference.update({
-            'parentFcmToken': token,
-            'nextofKinidEmail': parentEmail,
-            'parentUid': user.uid,
-          });
-          break; // stop searching once found
-        }
-      }
-    }
-
-    _isSaving = false;
   }
 }
 
 
+Future<void> _saveParentFcmToken(
+  String token,
+  String parentEmail,
+  String parentName,
+  String parentSecondName,
+  String parentPhone,
+) async {
+  if (_isSaving) return;
 
-Future<void> _saveParentFcmTokenAuth(String token, String parentEmail, ) async {
   _isSaving = true;
 
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    return;
-  }
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  final parentRef = FirebaseFirestore.instance
-      .collection('Users')
-      .doc(user.uid);
+    final parentRef =
+        FirebaseFirestore.instance.collection('Users').doc(user.uid);
 
-  // Save the token in parent record
+    final parentDoc = await parentRef.get();
+    final parentData = parentDoc.data();
 
-  // Get the parent's linked children
-  final parentDoc = await parentRef.get();
-  final parentData = parentDoc.data();
-  if (parentData == null) return;
+    if (parentData == null) return;
 
-  // Verify parent role
-  if (parentData['role'] != 'parent') {
-    return;
-  } else {
+    if (parentData['role'] != 'parent') return;
+
+    /* ---------- Save token on parent ---------- */
+
     await parentRef.set({
       'fcmToken': token,
-      "email": parentEmail,
+      'email': parentEmail,
     }, SetOptions(merge: true));
 
-    final linkedChildren = parentData['linkedChildren'] as List<dynamic>?;
+    final linkedChildren =
+        parentData['linkedChildren'] as List<dynamic>?;
 
-    if (linkedChildren == null || linkedChildren.isEmpty) {
-      return;
-    }
+    if (linkedChildren == null || linkedChildren.isEmpty) return;
 
-    // Loop through each linked child and update their record
-    for (var child in linkedChildren) {
+    /* ---------- Loop selected children ---------- */
+
+    for (final child in linkedChildren) {
       final schoolId = child['schoolId'];
-      final idNin = child['idNin'];
+      final studentId = child['studentId']; // IMPORTANT FIX
 
-      // Loop through all student class collections
-      final classCollections = [
-        'studentModelP1',
-        'studentModelP2',
-        'studentModelP3',
-        'studentModelP4',
-        'studentModelP5',
-        'studentModelP6',
-        'studentModelP7',
-      ];
+      if (schoolId == null || studentId == null) continue;
 
-      final schoolref = FirebaseFirestore.instance
+      /* ---------- Save in linkedParents ---------- */
+
+      final schoolParentRef = FirebaseFirestore.instance
           .collection('Schools')
-          .doc(schoolId);
-          
-      await schoolref.update({
-        'linkedParents': {
-          user.uid: {
-            'role': 'parent',
-           
-            // 'fcmToken': fcmToken,
-            'approved': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          }
-        }
-      },  
-      
+          .doc(schoolId)
+          .collection('linkedParents')
+          .doc(user.uid);
+
+      await schoolParentRef.set({
+        'role': 'parent',
+        'firstName': parentName,
+        'secondName': parentSecondName,
+        'phone': parentPhone,
+        'fcmToken': token,
+        'approved': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'email': parentEmail,
+        'parentUid': user.uid,
+      }, SetOptions(merge: true));
+
+      /* ---------- Update correct student ---------- */
+
+      await _updateStudentToken(
+        schoolId,
+        studentId,
+        token,
+        parentEmail,
+        user.uid,
       );
-
-      for (final collection in classCollections) {
-        final query = await FirebaseFirestore.instance
-            .collection('Schools')
-            .doc(schoolId)
-            .collection(collection)
-            .where('idNin', isEqualTo: idNin)
-            .limit(1)
-            .get();
-
-        if (query.docs.isNotEmpty) {
-          await query.docs.first.reference.update({
-            'parentFcmToken': token,
-            'nextofKinidEmail': parentEmail,
-            'parentUid': user.uid,
-          });
-          break; // stop searching once found
-        }
-      }
     }
-
+  } catch (e) {
+    if (kDebugMode) {
+      print("Save FCM error: $e");
+    }
+  } finally {
     _isSaving = false;
+  }
+}
+
+
+Future<void> _saveParentFcmTokenAuth(
+  String token,
+  String parentEmail,
+) async {
+  if (_isSaving) return;
+
+  _isSaving = true;
+
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final parentRef =
+        FirebaseFirestore.instance.collection('Users').doc(user.uid);
+
+    final parentDoc = await parentRef.get();
+    final parentData = parentDoc.data();
+
+    if (parentData == null) return;
+
+    if (parentData['role'] != 'parent') return;
+
+    await parentRef.set({
+      'fcmToken': token,
+      'email': parentEmail,
+    }, SetOptions(merge: true));
+
+    final linkedChildren =
+        parentData['linkedChildren'] as List<dynamic>?;
+
+    if (linkedChildren == null || linkedChildren.isEmpty) return;
+
+    for (final child in linkedChildren) {
+      final schoolId = child['schoolId'];
+      final studentId = child['studentId'];
+
+      if (schoolId == null || studentId == null) continue;
+
+      await _updateStudentToken(
+        schoolId,
+        studentId,
+        token,
+        parentEmail,
+        user.uid,
+      );
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print("Auth FCM save error: $e");
+    }
+  } finally {
+    _isSaving = false;
+  }
+}
+
+
+Future<void> _updateStudentToken(
+  String schoolId,
+  String studentId,
+  String token,
+  String parentEmail,
+  String parentUid,
+) async {
+  final firestore = FirebaseFirestore.instance;
+
+  final classCollections = [
+    'studentModelP1',
+    'studentModelP2',
+    'studentModelP3',
+    'studentModelP4',
+    'studentModelP5',
+    'studentModelP6',
+    'studentModelP7',
+  ];
+
+  final year = DateTime.now().year.toString();
+
+  for (final collection in classCollections) {
+    final ref = firestore
+        .collection('Schools')
+        .doc(schoolId)
+        .collection('Years')
+        .doc(year)
+        .collection(collection)
+        .doc(studentId);
+
+    final snap = await ref.get();
+
+    if (snap.exists) {
+      await ref.update({
+        'parentFcmToken': token,
+        'nextofKinidEmail': parentEmail,
+        'parentUid': parentUid,
+      });
+
+      if (kDebugMode) {
+        print("Updated student: $studentId");
+      }
+
+      break;
+    }
   }
 }

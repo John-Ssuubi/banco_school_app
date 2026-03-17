@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:banco_mobile/Auth/auth_student.dart';
 import 'package:banco_mobile/BarCodeScanner/barcode_scanner.dart';
 import 'package:banco_mobile/HeadTeacher/about_school.dart';
@@ -166,112 +168,114 @@ class _DailyAttendanceChartSecurityState extends State<DailyAttendanceChartSecur
                     ),
                   ),
                   StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('Schools', )
-                        .doc(schoolId)
-                        // .where(
-                        //   'Banco Primary Schools',
-                        //   isEqualTo: 'Banco Primary Schools',
-                        // )
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox();
-                      }
-      
-                      final data = snapshot.data;
-      
-                      final schoolName = data?['school_name'];
-                      final contact = data?['contact'] ?? '';
-                      final address = data?['address'] ?? '';
-                      final moto = data?['moto'] ?? '';
-                      final pobox = data?['pobox'] ?? '';
-                      final email = data?['email'] ?? '';
-                      final subscription = data?['subscription'] ?? '';
-                      final d1Start = data?['D1Start'] ?? 0;
-                      final d1End = data?['D1End'] ?? 0;
-                      final d2Start = data?['D2Start'] ?? 0;
-                      final d2End = data?['D2End'] ?? 0;
-                      final c3Start = data?['c3Start'] ?? 0;
-                      final c3End = data?['c3End'] ?? 0;
-                      final c4Start = data?['c4Start'] ?? 0;
-                      final c4End = data?['c4End'] ?? 0;
-                      final c5Start = data?['c5Start'] ?? 0;
-                      final c5End = data?['c5End'] ?? 0;
-                      final c6Start = data?['c6Start'] ?? 0;
-                      final c6End = data?['c6End'] ?? 0;
-                      final p7Start = data?['p7Start'] ?? 0;
-                      final p7End = data?['p7End'] ?? 0;
-                      final p8Start = data?['p8Start'] ?? 0;
-                      final p8End = data?['p8End'] ?? 0;
-                      final f9Start = data?['f9Start'] ?? 0;
-                      final f9End = data?['f9End'] ?? 0;
-                      final staffMembers = data?['staffMembers'] ?? {};
-                      final List<StaffMember> staffMembersList = staffMembers
-                          .values
-                          .map<StaffMember>(
-                            (memberData) => StaffMember(
-                              firstName: memberData['firstName'] ?? '',
-                              secondName: memberData['secondName'] ?? '',
-                              role: memberData['role'] ?? '',
-                              phone: memberData['phone'] ?? '',
-                            ),
-                          )
-                          .toList();
-      
-                      final linkedParentsData = data?['linkedParents'] ?? {};
-      
-                      final List<LinkedParent> linkedParentsList =
-                          linkedParentsData.values.map<LinkedParent>(
-                            (parentData) => LinkedParent(
-                             
-                              parentName: parentData['firstName'] ?? '',
-                               fcmToken: parentData['fcmToken'] ?? '',
-                            ),
-                          ).toList();
-      
-                      // final role = data['role'] ?? '';
-      
-                      return ListTile(
-                        leading: const Icon(Icons.info, color: Colors.black),
-                        title: const Text('About School', style: TextStyle(color: Colors.black),),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AboutSchool(
-                              schoolName: schoolName,
-                              pobox: pobox,
-                              address: address,
-                              moto: moto,
-                              contact: contact,
-                              email: email,
-                              subscription: subscription,
-                              d1Start: d1Start,
-                              d1End: d1End,
-                              d2Start: d2Start,
-                              d2End: d2End,
-                              c3Start: c3Start,
-                              c3End: c3End,
-                              c4Start: c4Start,
-                              c4End: c4End,
-                              c5Start: c5Start,
-                              c5End: c5End,
-                              c6Start: c6Start,
-                              c6End: c6End,
-                              p7Start: p7Start,
-                              p7End: p7End,
-                              p8Start: p8Start,
-                              p8End: p8End,
-                              f9Start: f9Start,
-                              f9End: f9End,
-                              staffMembers: staffMembersList,
-                              linkedParents: linkedParentsList,
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, schoolSnapshot) {
+                    if (!schoolSnapshot.hasData) return const SizedBox();
+
+                    final data =
+                        schoolSnapshot.data!.data() as Map<String, dynamic>? ??
+                        {};
+
+                    final schoolName = data['school_name'] ?? '';
+                    final contact = data['contact'] ?? '';
+                    final address = data['address'] ?? '';
+                    final moto = data['moto'] ?? '';
+                    final pobox = data['pobox'] ?? '';
+                    final email = data['email'] ?? '';
+                    final subscription = data['subscription'] ?? '';
+
+                    final d1Start = data['D1Start'] ?? 0;
+                    final d1End = data['D1End'] ?? 0;
+                    final d2Start = data['D2Start'] ?? 0;
+                    final d2End = data['D2End'] ?? 0;
+                    final c3Start = data['c3Start'] ?? 0;
+                    final c3End = data['c3End'] ?? 0;
+                    final c4Start = data['c4Start'] ?? 0;
+                    final c4End = data['c4End'] ?? 0;
+                    final c5Start = data['c5Start'] ?? 0;
+                    final c5End = data['c5End'] ?? 0;
+                    final c6Start = data['c6Start'] ?? 0;
+                    final c6End = data['c6End'] ?? 0;
+                    final p7Start = data['p7Start'] ?? 0;
+                    final p7End = data['p7End'] ?? 0;
+                    final p8Start = data['p8Start'] ?? 0;
+                    final p8End = data['p8End'] ?? 0;
+                    final f9Start = data['f9Start'] ?? 0;
+                    final f9End = data['f9End'] ?? 0;
+
+                    // 🔥 Nested staff stream
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Schools')
+                          .doc(schoolId)
+                          .collection('staffMembers')
+                          .snapshots(),
+                      builder: (context, staffSnapshot) {
+                        if (!staffSnapshot.hasData) return const SizedBox();
+
+                        final staffMembersList = staffSnapshot.data!.docs.map((
+                          doc,
+                        ) {
+                          final memberData = doc.data() as Map<String, dynamic>;
+
+                          return StaffMember(
+                            uid: memberData['teacherUid'],
+
+                            firstName: memberData['firstName'] ?? '',
+                            secondName: memberData['secondName'] ?? '',
+                            role: memberData['role'] ?? '',
+                            phone: memberData['phone'] ?? '',
+                          );
+                        }).toList();
+
+                        return ListTile(
+                          leading: const Icon(Icons.info, color: Colors.black),
+                          title: const Text(
+                            'About School',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AboutSchool(
+                                schoolName: schoolName,
+                                pobox: pobox,
+                                address: address,
+                                moto: moto,
+                                contact: contact,
+                                email: email,
+                                subscription: subscription,
+                                d1Start: d1Start,
+                                d1End: d1End,
+                                d2Start: d2Start,
+                                d2End: d2End,
+                                c3Start: c3Start,
+                                c3End: c3End,
+                                c4Start: c4Start,
+                                c4End: c4End,
+                                c5Start: c5Start,
+                                c5End: c5End,
+                                c6Start: c6Start,
+                                c6End: c6End,
+                                p7Start: p7Start,
+                                p7End: p7End,
+                                p8Start: p8Start,
+                                p8End: p8End,
+                                f9Start: f9Start,
+                                f9End: f9End,
+                                staffMembers: staffMembersList,
+                                linkedParents: const [], schoolId: schoolId,
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    );
+                  },
+                ),
                 ],
               ),
             );

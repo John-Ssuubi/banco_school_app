@@ -2,9 +2,12 @@
 
 import 'package:banco_mobile/Auth/auth_student.dart';
 import 'package:banco_mobile/HeadTeacher/head_teacher_dashboard.dart';
+import 'package:banco_mobile/Notifications/local_notifications.dart';
 import 'package:banco_mobile/Parents/parents_children_list.dart';
 import 'package:banco_mobile/Security/attendance_charts_security.dart';
 import 'package:banco_mobile/Teachers/teacher_home.dart';
+import 'package:banco_mobile/admin/admin_dashboard.dart';
+import 'package:banco_mobile/admin/inactive_sub.dart';
 import 'package:banco_mobile/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -12,33 +15,36 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-var d1Start = 100;
-var d1End = 90;
 
-var d2Start = 89;
-var d2End = 80;
+// var d1Start = 100;
+// var d1End = 90;
 
-var c3Start = 79;
-var c3End = 70;
+// var d2Start = 89;
+// var d2End = 80;
 
-var c4Start = 69;
-var c4End = 60;
+// var c3Start = 79;
+// var c3End = 70;
 
-var c5Start = 59;
-var c5End = 55;
+// var c4Start = 69;
+// var c4End = 60;
 
-var c6Start = 54;
-var c6End = 50;
+// var c5Start = 59;
+// var c5End = 55;
 
-var p7Start = 49;
-var p7End = 45;
+// var c6Start = 54;
+// var c6End = 50;
 
-var p8Start = 44;
-var p8End = 40;
+// var p7Start = 49;
+// var p7End = 45;
 
-var f9Start = 39;
-var f9End = 0;
+// var p8Start = 44;
+// var p8End = 40;
+
+// var f9Start = 39;
+// var f9End = 0;
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -49,15 +55,25 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await AwesomeNotificationsEngine.initializeAwesomeNotifications();
+  // if (!await AwesomeNotifications().()) {
+  // AwesomeNotifications().requestPermissionToSendNotifications();
+// }
+  await initNotifications();
+  tz.initializeTimeZones();
+  // tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Africa/Nairobi'));
+  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+
+
   // setupFcm();
 
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  // AURA 
   const MyApp({super.key});
 
   // This widget is the root of your application.
@@ -98,9 +114,7 @@ class MyApp extends StatelessWidget {
 
               if (userSnapshot.hasError) {
                 return Scaffold(
-                  body: Center(
-                    child: Text('Error loading user'),
-                  ),
+                  body: Center(child: Text('Error loading user')),
                 );
               }
 
@@ -123,7 +137,7 @@ class MyApp extends StatelessWidget {
                       // }
                     },
                   ),
-                  
+
                   body: Center(child: Text('User data not found.')),
                 );
               }
@@ -136,21 +150,130 @@ class MyApp extends StatelessWidget {
               final schoolname = userData['linkedChildren']?.toString() ?? '';
               final schoolId = userData['schoolId']?.toString() ?? '';
 
+              if (schoolId.isEmpty) {
+                return Scaffold(
+                  body: Center(child: Text('School ID not found.')),
+                );
+              }
               // ✅ Navigate based on role
               if (role == 'parent') {
-                return ParentsChildrenList(approve: approve, schoolname: schoolname);
-              } 
-              if (role == 'security' ) {
-                return DailyAttendanceChartSecurity(schoolId: schoolId, 
-                        date: DateTime.now().toIso8601String().split('T').first,
-                
+                return ParentsChildrenList(
+                  approve: approve,
+                  schoolname: schoolname,
                 );
-
               }
-              else if (role == 'headteacher') {
-                return HeadTeacherDashboard(classes: classes, approve: approve, schoolId: schoolId,);
+              if (role == 'admin') {
+                return StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, asyncSnapshot) {
+                    final data = asyncSnapshot.data?.data();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
+                    if (asyncSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (subscription != 'paid') {
+                      return InactiveSub();
+                    } else {
+                      return AdminDashboard(
+                        approve: approve,
+                        schoolname: schoolname,
+                      );
+                    }
+                  },
+                );
+              }
+              if (role == 'security') {
+                return StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, asyncSnapshot) {
+                    final data = asyncSnapshot.data?.data();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
+                    if (asyncSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (subscription != 'paid') {
+                      return InactiveSub();
+                    } else {
+                      return DailyAttendanceChartSecurity(
+                        schoolId: schoolId,
+                        date: DateTime.now().toIso8601String().split('T').first,
+                      );
+                    }
+                  },
+                );
+              } else if (role == 'headteacher') {
+                return StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, asyncSnapshot) {
+                    final data = asyncSnapshot.data?.data();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
+                    print('subscription: $subscription');
+
+                    if (asyncSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (subscription != 'paid') {
+                      return InactiveSub();
+                    } else {
+                      return HeadTeacherDashboard(
+                        classes: classes,
+                        approve: approve,
+                        schoolId: schoolId,
+                      );
+                    }
+                  },
+                );
               } else {
-                return TeacherHome(schoolname: schoolname, approve: approve);
+                return StreamBuilder(
+                  stream: FirebaseFirestore.instance
+                      .collection('Schools')
+                      .doc(schoolId)
+                      .snapshots(),
+                  builder: (context, asyncSnapshot) {
+                    final data = asyncSnapshot.data?.data();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
+                    if (asyncSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (subscription != 'paid') {
+                      return InactiveSub();
+                    } else {
+                      return TeacherHome(
+                        schoolname: schoolname,
+                        approve: approve,
+                      );
+                    }
+                  },
+                );
               }
             },
           );

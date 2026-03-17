@@ -14,16 +14,11 @@ class ChatListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Messages')),
-      // floatingActionButton: FloatingActionButton,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => NewChat(
-                // or 'school'
-              ),
-            ),
+            MaterialPageRoute(builder: (_) => NewChat()),
           );
         },
         child: const Icon(Icons.messenger_rounded),
@@ -38,50 +33,65 @@ class ChatListScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           if (snapshot.hasError) {
             return const Center(child: Text('Something went wrong'));
           }
-          final chats = snapshot.data!.docs;
-          if (chats.isEmpty) {
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No conversations yet'));
           }
+
+          final chats = snapshot.data!.docs;
 
           return ListView.separated(
             itemCount: chats.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final chat = chats[index];
+              final data = chat.data() as Map<String, dynamic>;
 
-              // final String chatId = chat.id;
-              final String lastMessage = chat['lastMessage'] ?? '';
-              final Timestamp? time = chat['lastMessageTime'];
-              final String firstName = chat['parentNameFirst'] ?? '';
-              final String secondName = chat['parentNameSecond'] ?? '';
+              final String lastMessage = data['lastMessage'] ?? '';
+              final Timestamp? time = data['lastMessageTime'];
+              final String firstName = data['parentNameFirst'] ?? '';
+              final String secondName = data['parentNameSecond'] ?? '';
+              final String schoolId = data['schoolId'] ?? '';
+              final String schoolName = data['schoolName'] ?? '';
 
               final DateTime? dateTime = time?.toDate();
               final String formattedTime = dateTime != null
                   ? DateFormat('HH:mm').format(dateTime)
                   : '';
 
-              /// 🔹 Determine other participant
-              final List participants = List<String>.from(chat['participants']);
-              final String otherUserId = participants.firstWhere(
-                (id) => id != userId,
-              );
+              /// ✅ SAFE participants handling
+              final List<String> participants =
+                  List<String>.from(data['participants'] ?? []);
+
+              final others =
+                  participants.where((id) => id != userId).toList();
+
+              if (others.isEmpty) {
+                // broken chat doc → skip rendering
+                return const SizedBox();
+              }
+
+              final String otherUserId = others.first;
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
-                    .collection('Users') // or Schools / Parents
+                    .collection('Users')
                     .doc(otherUserId)
                     .get(),
                 builder: (context, userSnapshot) {
-                  // final otherName = userSnapshot.data?['name'] ?? 'Chat';
-
                   return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.person),
+                    ),
                     title: Text(
-                      chat['schoolId'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      schoolName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     subtitle: Text(
                       lastMessage,
@@ -96,31 +106,18 @@ class ChatListScreen extends StatelessWidget {
                           style: const TextStyle(fontSize: 12),
                         ),
                         const SizedBox(height: 4),
-                        // if (chat['unreadCount_parent'] > 0)
-                        //   CircleAvatar(
-                        //     radius: 10,
-                        //     backgroundColor: Colors.red,
-                        //     child: Text(
-                        //       chat['unreadCount_parent'].toString(),
-                        //       style: const TextStyle(
-                        //         color: Colors.white,
-                        //         fontSize: 12,
-                        //       ),
-                        //     ),
-                        //   ),
                       ],
                     ),
-
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatScreen(
-                            schoolId: chat['schoolId'],
-
+                            schoolId: schoolId,
                             myRole: 'parent',
                             firstName: firstName,
                             secondName: secondName,
+                            schoolName: schoolName,
                           ),
                         ),
                       );

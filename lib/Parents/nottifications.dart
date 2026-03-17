@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'dart:async';
 
 import 'package:banco_mobile/Chat/Parent/chat_list.dart';
@@ -18,11 +20,24 @@ class Nottifications extends StatefulWidget {
 
 class _NottificationsState extends State<Nottifications> {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
+
   Timer? _timer;
+
+  /// Current selected filter
+  String _selectedFilter = "All";
+
+  final List<String> _filters = [
+    "All",
+    "Attendance",
+    "Events",
+  //  
+    "Alerts",
+  ];
 
   @override
   void initState() {
     super.initState();
+
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -34,16 +49,35 @@ class _NottificationsState extends State<Nottifications> {
     super.dispose();
   }
 
-  Map<String, List<QueryDocumentSnapshot>> _groupByType(
-    List<QueryDocumentSnapshot> docs,
-  ) {
-    final Map<String, List<QueryDocumentSnapshot>> grouped = {};
-    for (var doc in docs) {
-      final type = doc['type'] ?? 'Others';
-      grouped.putIfAbsent(type, () => []);
-      grouped[type]!.add(doc);
-    }
-    return grouped;
+  /* ---------------- FIRESTORE HELPERS ---------------- */
+
+  Future<void> _markAsRead(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('inbox')
+        .doc(docId)
+        .update({'status': 'read'});
+  }
+
+  Future<void> _deleteNotification(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('inbox')
+        .doc(docId)
+        .delete();
+  }
+
+  /* ---------------- FILTER LOGIC ---------------- */
+
+  List<QueryDocumentSnapshot> _applyFilter(
+      List<QueryDocumentSnapshot> docs) {
+    if (_selectedFilter == "All") return docs;
+
+    return docs
+        .where((doc) => doc['type'] == _selectedFilter)
+        .toList();
   }
 
   Color _getColorForType(String type) {
@@ -76,6 +110,8 @@ class _NottificationsState extends State<Nottifications> {
     }
   }
 
+  /* ---------------- UI ---------------- */
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -86,51 +122,38 @@ class _NottificationsState extends State<Nottifications> {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-         if (widget.approve != 'true') {
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                child: Column(
-                  children: [
-                    Text('Waiting for Admin to approve you.'),
-                    Text('Please contact the school to approve you.'),
-                  ],
-                ),
-              ),
-            );
-          } else if (widget.approve == 'false') {
-            // ignore: avoid_unnecessary_containers
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                // ignore: avoid_unnecessary_containers
-                child: Container(
-                  child: Column(
-                    children: [
-                      Text('Waiting for Admin to approve you.'),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          'Please contact the school to approve you. Or register again in settings',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
+        /* ----------- Approval Check ----------- */
+
+        if (widget.approve != 'true') {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Text('Waiting for Admin Approval'),
+                SizedBox(height: 8),
+                Text('Please contact your school'),
+              ],
+            ),
+          );
+        }
+
+        /* ----------- Loading ----------- */
+
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final docs = snapshot.data!.docs;
-        final groupedNotifications = _groupByType(docs);
-        final categories = groupedNotifications.keys.toList();
+        /* ----------- Apply Filter ----------- */
+
+        final allDocs = snapshot.data!.docs;
+
+        final filteredDocs = _applyFilter(allDocs);
 
         return Column(
           children: [
-           
+
+            /* ---------------- MESSAGES SHORTCUT ---------------- */
+
             Padding(
               padding: const EdgeInsets.all(12),
               child: InkWell(
@@ -163,60 +186,159 @@ class _NottificationsState extends State<Nottifications> {
               ),
             ),
 
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final notifications = groupedNotifications[category]!;
+            /* ---------------- FILTER CHIPS ---------------- */
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          category,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+            SizedBox(
+              height: 45,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _filters.length,
+                itemBuilder: (context, i) {
+                  final filter = _filters[i];
+                  final selected = _selectedFilter == filter;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(filter),
+                      selected: selected,
+                      selectedColor: Colors.blueAccent,
+                      labelStyle: TextStyle(
+                        color:
+                            selected ? Colors.white : Colors.black,
                       ),
-                      ...notifications.map((notification) {
-                        final String title =
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedFilter = filter;
+                        });
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            /* ---------------- NOTIFICATIONS LIST ---------------- */
+
+            Expanded(
+              child: filteredDocs.isEmpty
+                  ? const Center(
+                      child: Text("No notifications found"),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12),
+                      itemCount: filteredDocs.length,
+                      itemBuilder: (context, index) {
+                        final notification =
+                            filteredDocs[index];
+
+                        final title =
                             notification['title'] ?? '';
-                        final String body =
+                        final body =
                             notification['body'] ?? '';
-                            final type = notification['type'] ?? '';
+                        final type =
+                            notification['type'] ?? '';
+                        final status =
+                            notification['status'] ?? '';
 
                         final Timestamp? timestamp =
                             notification['timestamp'];
+
                         final DateTime? dateTime =
                             timestamp?.toDate();
 
-                        final String timeAgo = dateTime != null
+                        final timeAgo = dateTime != null
                             ? timeago.format(dateTime)
                             : '';
 
                         return InkWell(
+                          /* ----------- TAP ----------- */
+                          onTap: () async {
+                            if (status == 'pending') {
+                              await _markAsRead(
+                                  notification.id);
+                            }
+
+                            if (type == "Attendance") {
+                              Navigator.push(context,
+                                  MaterialPageRoute(
+                                builder: (_) {
+                                  return ChildAttendance(
+                                    schoolId: notification[
+                                        'schoolFrom'],
+                                    studentId: notification[
+                                        'studentId'],
+                                  );
+                                },
+                              ));
+                            }
+
+                            if (type == "Events") {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      UpcomingEventsPage(
+                                    schoolId: notification[
+                                        'schoolFrom'],
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+
+                          /* ----------- LONG PRESS ----------- */
+                          onLongPress: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text(
+                                    "Delete Notification"),
+                                content: const Text(
+                                    "Delete this notification?"),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context),
+                                    child:
+                                        const Text("Cancel"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      await _deleteNotification(
+                                          notification.id);
+                                    },
+                                    child: const Text(
+                                      "Delete",
+                                      style: TextStyle(
+                                          color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+
                           child: Container(
-                            margin:
-                                const EdgeInsets.only(bottom: 10),
+                            margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).cardColor,
+                              color: status == 'pending'
+                                  ? Colors.blue.withOpacity(0.08)
+                                  : Theme.of(context).cardColor,
                               borderRadius:
                                   BorderRadius.circular(12),
                             ),
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor:
-                                    _getColorForType(category),
+                                    _getColorForType(type),
                                 child: Icon(
-                                  _getIconForType(category),
+                                  _getIconForType(type),
                                   color: Colors.white,
                                 ),
                               ),
@@ -230,35 +352,9 @@ class _NottificationsState extends State<Nottifications> {
                                   Text('$body • $timeAgo'),
                             ),
                           ),
-                          onTap: () {
-                            if (type == "Attendance") {
-                              Navigator.push(context,
-                                  MaterialPageRoute(
-                                builder: (_) {
-                                  return ChildAttendance(
-                                    schoolId: notification['schoolFrom'],
-                                    studentName: notification['studentName'],
-                                  );
-                                },
-                              ));
-                            }
-                            if (type == "Events") {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UpcomingEventsPage(
-                                    schoolId: notification['schoolFrom'],
-                                  ),
-                                ),
-                              );
-                            }
-                          },
                         );
-                      }),
-                    ],
-                  );
-                },
-              ),
+                      },
+                    ),
             ),
           ],
         );

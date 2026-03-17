@@ -26,6 +26,7 @@ class _AuthStudentState extends State<AuthStudent> {
 
   @override
   void dispose() {
+     GoogleSignIn.instance.initialize();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -50,29 +51,33 @@ class _AuthStudentState extends State<AuthStudent> {
     }
   }
 
-  Future<void> signInWithGoogle() async {
+Future<void> signInWithGoogle() async {
   try {
     setState(() {
       isLoading = true;
       error = "";
     });
 
-    final GoogleSignInAccount? googleUser =
-        await GoogleSignIn.standard().signIn();
+    await GoogleSignIn.instance.initialize();
 
-    if (googleUser == null) {
+    final GoogleSignInAccount account =
+        await GoogleSignIn.instance.authenticate(scopeHint: ['email']);
+
+    final GoogleSignInClientAuthorization? auth =
+        await account.authorizationClient.authorizationForScopes(
+      ['email', 'profile'],
+    );
+
+    if (auth == null) {
       setState(() {
-        isLoading = false;
+        error = "Google authorization failed.";
       });
       return;
     }
 
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
-
     final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
+      accessToken: auth.accessToken,
+      idToken: account.authentication.idToken,
     );
 
     await FirebaseAuth.instance.signInWithCredential(credential);
@@ -85,13 +90,11 @@ class _AuthStudentState extends State<AuthStudent> {
       context,
       MaterialPageRoute(builder: (_) => MyApp()),
     );
-  } on FirebaseAuthException catch (e) {
-    setState(() {
-      error = _friendlyAuthMessage(e.code);
-    });
   } catch (e) {
     setState(() {
+
       error = "Google sign-in failed.";
+      print("Google sign-in error: $e");
     });
   } finally {
     setState(() {
@@ -347,8 +350,6 @@ class _AuthStudentState extends State<AuthStudent> {
                 ),
 
                 const SizedBox(height: 25),
-
-                 SizedBox(height: 20),
               SizedBox(
                 height: 60,
                 child: OutlinedButton.icon(
@@ -369,6 +370,7 @@ class _AuthStudentState extends State<AuthStudent> {
                   ),
                 ),
               ),
+                 SizedBox(height: 20),
 
                 InkWell(
                   onTap: showAccountType,

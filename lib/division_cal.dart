@@ -4,7 +4,6 @@ import 'package:banco_mobile/DataBase/P4/Term%20I/p4_database.dart';
 import 'package:banco_mobile/DataBase/P4/Term%20II/p4_database_term2.dart';
 import 'package:banco_mobile/DataBase/P4/Term%20III/p4_database_term3.dart';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
-import 'package:banco_mobile/main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +11,7 @@ var divisionBot = '';
 var divisionMid = '';
 var divisionEnd = '';
 
-String divCalBOT(double grades) {
+String divCalBOT(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   if (grades <= d1Start) {
     divisionBot = 'D1';
   }
@@ -50,7 +49,7 @@ String divCalBOT(double grades) {
   return divisionBot;
 }
 
-String gradeBot(double grade) {
+String gradeBot(double grade, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   var totalScores2 = grade;
 
   var aggregates2 = 'F9';
@@ -93,7 +92,7 @@ String gradeBot(double grade) {
   return aggregates2;
 }
 
-String divCalMid(double grades) {
+String divCalMid(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   if (grades <= d1Start) {
     divisionMid = 'D1';
   }
@@ -131,7 +130,7 @@ String divCalMid(double grades) {
   return divisionMid;
 }
 
-String gradeMid(double grade) {
+String gradeMid(double grade, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   var totalScores2 = grade;
 
   var aggregates2 = 'F9';
@@ -176,7 +175,7 @@ String gradeMid(double grade) {
 
 // 0700984034
 
-String divEND(double grades) {
+String divEND(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   if (grades <= d1Start) {
     divisionEnd = 'D1';
   }
@@ -214,7 +213,7 @@ String divEND(double grades) {
   return divisionEnd;
 }
 
-String gradeEot(List<P4Subjects>? scoreswidget) {
+String gradeEot(List<P4Subjects>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   // var totalScores2 = grade;
   int agg3div2 = 0;
   var agg3div = 0;
@@ -320,7 +319,7 @@ String gradeEot(List<P4Subjects>? scoreswidget) {
 }
 
 
-String gradeEotTerm2  (List<P4SubjectsTerm2>? scoreswidget) {
+String gradeEotTerm2  (List<P4SubjectsTerm2>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   // var totalScores2 = grade;
   int agg3div2 = 0;
   var agg3div = 0;
@@ -426,7 +425,7 @@ String gradeEotTerm2  (List<P4SubjectsTerm2>? scoreswidget) {
 }
 
 
-String gradeEotTerm3  (List<P4SubjectsTerm3>? scoreswidget) {
+String gradeEotTerm3  (List<P4SubjectsTerm3>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
   // var totalScores2 = grade;
   int agg3div2 = 0;
   var agg3div = 0;
@@ -607,7 +606,7 @@ Future<void> dialogBOT( {
                 Navigator.pop(context);
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score: $e")),
+                  SnackBar(content: Text("Error updating score")),
                 );
               }
             },
@@ -702,7 +701,7 @@ Future<void> dialogMID( {
                 Navigator.pop(context);
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score: $e")),
+                  SnackBar(content: Text("Error updating score")),
                 );
               }
             },
@@ -797,7 +796,7 @@ Future<void> dialogEOT( {
                 Navigator.pop(context);
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score: $e")),
+                  SnackBar(content: Text("Error updating score")),
                 );
               }
             },
