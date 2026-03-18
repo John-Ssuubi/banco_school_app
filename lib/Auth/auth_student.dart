@@ -26,7 +26,7 @@ class _AuthStudentState extends State<AuthStudent> {
 
   @override
   void dispose() {
-     GoogleSignIn.instance.initialize();
+    GoogleSignIn.instance.initialize();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -51,57 +51,53 @@ class _AuthStudentState extends State<AuthStudent> {
     }
   }
 
-Future<void> signInWithGoogle() async {
-  try {
-    setState(() {
-      isLoading = true;
-      error = "";
-    });
-
-    await GoogleSignIn.instance.initialize();
-
-    final GoogleSignInAccount account =
-        await GoogleSignIn.instance.authenticate(scopeHint: ['email']);
-
-    final GoogleSignInClientAuthorization? auth =
-        await account.authorizationClient.authorizationForScopes(
-      ['email', 'profile'],
-    );
-
-    if (auth == null) {
+  Future<void> signInWithGoogle() async {
+    try {
       setState(() {
-        error = "Google authorization failed.";
+        isLoading = true;
+        error = "";
       });
-      return;
+
+      final GoogleSignInAccount account = await GoogleSignIn.instance
+          .authenticate(scopeHint: ['email']);
+
+      final GoogleSignInClientAuthorization? auth = await account
+          .authorizationClient
+          .authorizationForScopes(['email', 'profile']);
+
+      if (auth == null) {
+        setState(() {
+          error = "Google authorization failed.";
+        });
+        return;
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: auth.accessToken,
+        idToken: account.authentication.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      await setupFcm();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MyApp()),
+      );
+    } catch (e) {
+      setState(() {
+        error = "Google sign-in failed.";
+        print("Google sign-in error: $e");
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
-
-    final credential = GoogleAuthProvider.credential(
-      accessToken: auth.accessToken,
-      idToken: account.authentication.idToken,
-    );
-
-    await FirebaseAuth.instance.signInWithCredential(credential);
-
-    await setupFcm();
-
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => MyApp()),
-    );
-  } catch (e) {
-    setState(() {
-
-      error = "Google sign-in failed.";
-      print("Google sign-in error: $e");
-    });
-  } finally {
-    setState(() {
-      isLoading = false;
-    });
   }
-}
 
   Future<void> login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -110,7 +106,6 @@ Future<void> signInWithGoogle() async {
       });
       return;
     }
-
 
     try {
       setState(() {
@@ -156,9 +151,7 @@ Future<void> signInWithGoogle() async {
         content: TextField(
           controller: emailReset,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: "Enter your email",
-          ),
+          decoration: const InputDecoration(labelText: "Enter your email"),
         ),
         actions: [
           TextButton(
@@ -171,15 +164,11 @@ Future<void> signInWithGoogle() async {
                 Navigator.pop(context);
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Password reset email sent."),
-                  ),
+                  const SnackBar(content: Text("Password reset email sent.")),
                 );
               } catch (_) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Failed to send reset email."),
-                  ),
+                  const SnackBar(content: Text("Failed to send reset email.")),
                 );
               }
             },
@@ -206,9 +195,7 @@ Future<void> signInWithGoogle() async {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => CreateAccountParent(),
-                      ),
+                      MaterialPageRoute(builder: (_) => CreateAccountParent()),
                     );
                   },
                   child: Column(
@@ -229,9 +216,7 @@ Future<void> signInWithGoogle() async {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => StaffSelect(),
-                      ),
+                      MaterialPageRoute(builder: (_) => StaffSelect()),
                     );
                   },
                   child: Column(
@@ -257,12 +242,19 @@ Future<void> signInWithGoogle() async {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    GoogleSignIn.instance.initialize(
+      serverClientId:
+          "607942899331-of0r69k20r8md0c8c8ou4cbnqh859h4t.apps.googleusercontent.com",
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: mainColor,
-        title: const Text(""),
-      ),
+      appBar: AppBar(backgroundColor: mainColor, title: const Text("")),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Center(
@@ -298,7 +290,7 @@ Future<void> signInWithGoogle() async {
                   child: TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    style:  TextStyle(color: mainColor),
+                    style: TextStyle(color: mainColor),
                     decoration: const InputDecoration(
                       labelText: "Email",
                       border: OutlineInputBorder(),
@@ -336,9 +328,7 @@ Future<void> signInWithGoogle() async {
                   width: 215,
                   height: 60,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mainColor,
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: mainColor),
                     onPressed: login,
                     child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
@@ -350,27 +340,27 @@ Future<void> signInWithGoogle() async {
                 ),
 
                 const SizedBox(height: 25),
-              SizedBox(
-                height: 60,
-                child: OutlinedButton.icon(
-                  onPressed: signInWithGoogle,
-                  icon: Image.asset("assets/googlelogo.png", height: 22),
+                SizedBox(
+                  height: 60,
+                  child: OutlinedButton.icon(
+                    onPressed: signInWithGoogle,
+                    icon: Image.asset("assets/googlelogo.png", height: 22),
 
-                  label: const Text(
-                    "Sign in with Google",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                    label: const Text(
+                      "Sign in with Google",
+                      style: TextStyle(fontSize: 16),
                     ),
-                    side: BorderSide(color: Colors.grey),
-                    backgroundColor: Colors.white,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      side: BorderSide(color: Colors.grey),
+                      backgroundColor: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-                 SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 InkWell(
                   onTap: showAccountType,

@@ -4,17 +4,17 @@ import 'package:banco_mobile/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class HomePage extends StatefulWidget {
+class ClassAssessment extends StatefulWidget {
   final String model;
   final String schoolId;
 
-  const HomePage({super.key, required this.model, required this.schoolId});
+  const ClassAssessment({super.key, required this.model, required this.schoolId});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<ClassAssessment> createState() => _ClassAssessmentState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _ClassAssessmentState extends State<ClassAssessment> {
   String currentYear = DateTime.now().year.toString();
 
   @override
@@ -90,8 +90,7 @@ String searchQuery = "";
                   .doc(widget.schoolId)
                   .collection('Years')
                   .doc(currentYear)
-                  .collection(widget.model)
-                  .orderBy('studentName')
+                  .collection(widget.model).orderBy('studentName')
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

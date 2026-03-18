@@ -163,8 +163,8 @@ class _StatHtTermIIIState extends State<StatHtTermIII> {
               ],
             ),
             content: Text(
-              "Students performed better in $bestSubject.\n\n"
-              "However, they should improve in $worstSubject.\n\n",
+              "Students performed better in $worstSubject.\n\n"
+              "However, they should improve in $bestSubject.\n\n",
               style: const TextStyle(fontSize: 16),
             ),
             actions: [
@@ -251,8 +251,8 @@ class _StatHtTermIIIState extends State<StatHtTermIII> {
               ],
             ),
             content: Text(
-              "Students performed better in $bestSubject.\n\n"
-              "However, they should improve in $worstSubject.\n\n",
+              "Students performed better in $worstSubject.\n\n"
+              "However, they should improve in $bestSubject.\n\n",
               style: const TextStyle(fontSize: 16),
             ),
             actions: [
@@ -339,8 +339,8 @@ class _StatHtTermIIIState extends State<StatHtTermIII> {
               ],
             ),
             content: Text(
-              "Students performed better in $bestSubject.\n\n"
-              "However, they should improve in $worstSubject.\n\n",
+              "Students performed better in $worstSubject.\n\n"
+              "However, they should improve in $bestSubject.\n\n",
               style: const TextStyle(fontSize: 16),
             ),
             actions: [
