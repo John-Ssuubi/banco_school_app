@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:banco_mobile/Auth/auth_student.dart';
+import 'package:banco_mobile/HeadTeacher/Assessment/headteacher_assessment.dart';
 import 'package:banco_mobile/HeadTeacher/Results/headteacher_classes.dart';
 import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/attendance.dart';
@@ -143,7 +144,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard> {
   void initState()  {
     super.initState();
     AwesomeNotificationsEngine.scheduledNotificationAwesome();
-    AwesomeNotificationsEngine.showAwesomeNotification();
+    // AwesomeNotificationsEngine.showAwesomeNotification();
     // LocalNotifications.showNotification();
     // ZonedNotifications.showZonedNotification();
     loadData();
@@ -615,6 +616,47 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard> {
                             classes: widget.classes,
                             approve: widget.approve,
                             schoolId: widget.schoolId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+
+                child: GridTile(
+                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
+                  child: InkWell(
+                    child: Container(
+                      width: 75,
+                      height: 75,
+                      decoration: BoxDecoration(
+                        color: mainColor,
+
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.assignment, size: 40, color: Colors.white),
+                          SizedBox(height: 5),
+                          Text(
+                            'Assessment',
+                            style: TextStyle(fontSize: 14, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HeadteacherAssessment(
+                            classes: widget.classes,
+                            approve: widget.approve,
+                            // schoolId: widget.schoolId,
                           ),
                         ),
                       );

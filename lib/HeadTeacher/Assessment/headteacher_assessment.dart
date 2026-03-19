@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, sized_box_for_whitespace
 
+import 'package:banco_mobile/HeadTeacher/Assessment/class_assessment.dart';
 import 'package:banco_mobile/home.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -179,7 +180,7 @@ class _HeadteacherClassesState extends State<HeadteacherAssessment> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => HomePage(
+                            builder: (context) => ClassAssessment(
                               model: classData['classModel'],
                               schoolId: classData['schoolId'],
                             ),
