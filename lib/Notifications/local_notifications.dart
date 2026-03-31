@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
@@ -38,9 +38,11 @@ class LocalNotifications {
     final List<ActiveNotification> activeNotifications =
         await flutterLocalNotificationsPlugin.getActiveNotifications();
     for (var notification in activeNotifications) {
-      print(
+      if (kDebugMode) {
+        print(
         'Active Notification: ID=${notification.id}, Title=${notification.title}, Body=${notification.body}, Payload=${notification.payload}',
       );
+      }
     }
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
@@ -152,7 +154,9 @@ class ZonedNotifications {
     //   );
 
     final now = tz.TZDateTime.now(tz.local);
-    print('Current time: ${now.toString()}');
+    if (kDebugMode) {
+      print('Current time: ${now.toString()}');
+    }
 
     var scheduledDate = tz.TZDateTime(
       tz.local,

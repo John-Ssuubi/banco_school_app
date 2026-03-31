@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 Color mainColor = const Color.fromARGB(255, 2, 116, 63);
@@ -32,3 +34,41 @@ InputDecoration customDecorationParentForm({required String labelText}) {
       ),
     );
   }
+
+
+Widget glassButton(IconData icon) {
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(20),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(
+        sigmaX: 5,
+        sigmaY: 5,
+      ),
+      child: Container(
+        width: 50,
+        height: 50,
+        alignment: Alignment.center,
+
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.5),
+
+          borderRadius: BorderRadius.circular(20),
+
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.5),
+              blurRadius: 10,
+            ),
+          ],
+        ),
+
+        child: Icon(icon),
+      ),
+    ),
+  );
+}

@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/HeadTeacher/Assessment/headteacher_assessment.dart';
+import 'package:banco_mobile/HeadTeacher/headteacher_assessment.dart';
 import 'package:banco_mobile/HeadTeacher/Results/headteacher_classes.dart';
 import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/attendance.dart';

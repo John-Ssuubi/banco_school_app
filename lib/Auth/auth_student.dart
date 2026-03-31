@@ -6,6 +6,7 @@ import 'package:banco_mobile/main.dart';
 import 'package:banco_mobile/parentFcmToken.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -52,6 +53,7 @@ class _AuthStudentState extends State<AuthStudent> {
   }
 
   Future<void> signInWithGoogle() async {
+    if (isLoading) return;
     try {
       setState(() {
         isLoading = true;
@@ -66,9 +68,9 @@ class _AuthStudentState extends State<AuthStudent> {
           .authorizationForScopes(['email', 'profile']);
 
       if (auth == null) {
-        setState(() {
-          error = "Google authorization failed.";
-        });
+        if (kDebugMode) {
+          print("User cancelled authorization");
+        }
         return;
       }
 
@@ -83,14 +85,28 @@ class _AuthStudentState extends State<AuthStudent> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => MyApp()),
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      bool isNewUser = userCredential.additionalUserInfo!.isNewUser;
+
+      if (isNewUser) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => StaffSelect()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MyApp()),
+        );
+      }
     } catch (e) {
       setState(() {
         error = "Google sign-in failed.";
-        print("Google sign-in error: $e");
+        if (kDebugMode) {
+          print("Google sign-in error: $e");
+        }
       });
     } finally {
       setState(() {
@@ -343,7 +359,9 @@ class _AuthStudentState extends State<AuthStudent> {
                 SizedBox(
                   height: 60,
                   child: OutlinedButton.icon(
-                    onPressed: signInWithGoogle,
+                    onPressed: () async {
+                      await signInWithGoogle();
+                    },
                     icon: Image.asset("assets/googlelogo.png", height: 22),
 
                     label: const Text(

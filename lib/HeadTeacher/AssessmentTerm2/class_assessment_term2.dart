@@ -1,24 +1,28 @@
+import 'dart:ui';
+
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
+import 'package:banco_mobile/HeadTeacher/AssessmentTerm1/subject_analysis.dart';
+import 'package:banco_mobile/HeadTeacher/AssessmentTerm1/subject_contribution.dart';
 // import 'package:banco_mobile/P4/student_p4.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class ClassAssessment extends StatefulWidget {
+class ClassAssessmentTerm2 extends StatefulWidget {
   final String model;
   final String schoolId;
 
-  const ClassAssessment({
+  const ClassAssessmentTerm2({
     super.key,
     required this.model,
     required this.schoolId,
   });
 
   @override
-  State<ClassAssessment> createState() => _ClassAssessmentState();
+  State<ClassAssessmentTerm2> createState() => _ClassAssessmentState();
 }
 
-class _ClassAssessmentState extends State<ClassAssessment> {
+class _ClassAssessmentState extends State<ClassAssessmentTerm2> {
   String currentYear = DateTime.now().year.toString();
 
   @override
@@ -58,6 +62,7 @@ class _ClassAssessmentState extends State<ClassAssessment> {
 
   // Total BOT score
   double totalBOT(List subjects) {
+    // ignore: avoid_types_as_parameter_names
     return subjects.fold(0, (sum, s) => sum + (s.scoreBOT ?? 0));
   }
 
@@ -73,12 +78,34 @@ class _ClassAssessmentState extends State<ClassAssessment> {
     return totalBOT(subjects) / subjects.length;
   }
 
+  int divStudents = 0;
+  int div2Students = 0;
+  int div3Students = 0;
+  int div4Students = 0;
+  int uStudents = 0;
+
   // Division
   String getDivision(int agg) {
-    if (agg <= 12) return "Division 1";
-    if (agg <= 24) return "Division 2";
-    if (agg <= 32) return "Division 3";
-    return "Division 4";
+    if (agg <= 12) {
+      divStudents++;
+      return "Division 1";
+    }
+    if (agg <= 24) {
+      div2Students++;
+      return "Division 2";
+    }
+    if (agg <= 32) {
+      div3Students++;
+      return "Division 3";
+    }
+    if (agg <= 35) {
+      div4Students++;
+      return "Division 4";
+    }
+    {
+      uStudents++;
+      return "Ungraded";
+    }
   }
 
   @override
@@ -95,33 +122,59 @@ class _ClassAssessmentState extends State<ClassAssessment> {
       body: Column(
         children: [
           // 🔎 SEARCH BAR
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: "Search student...",
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          searchController.clear();
-                          setState(() {
-                            searchQuery = "";
-                          });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.5), // transparency
+                  borderRadius: BorderRadius.circular(20),
+
+                  // Glass border
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
+
+                  // Optional shadow
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: "Search student...",
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                setState(() {
+                                  searchQuery = "";
+                                });
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value.toLowerCase();
+                      });
+                    },
+                  ),
                 ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                });
-              },
             ),
           ),
 
@@ -165,8 +218,8 @@ class _ClassAssessmentState extends State<ClassAssessment> {
                 // 🔥 Sort students by total aggregate (lowest is best)
                 filteredStudents.sort(
                   (a, b) => totalAggregate(
-                    a.subjectsScore,
-                  ).compareTo(totalAggregate(b.subjectsScore)),
+                    a.subjectsScoreTerm2,
+                  ).compareTo(totalAggregate(b.subjectsScoreTerm2)),
                 );
 
                 if (filteredStudents.isEmpty) {
@@ -177,6 +230,22 @@ class _ClassAssessmentState extends State<ClassAssessment> {
                   itemCount: filteredStudents.length,
                   itemBuilder: (context, index) {
                     final student = filteredStudents[index];
+
+                    int totalBOTInt = totalBOT(student.subjectsScoreTerm2).toInt();
+                    String totalBOTString = totalBOTInt.toString();
+
+                    if (totalBOTInt < 0) {
+                      totalBOTString = "U";
+                    }
+
+                    int totalAvgInt = averageScore(
+                      student.subjectsScoreTerm2,
+                    ).toInt();
+                    String totalAvgString = totalAvgInt.toString();
+
+                    if (totalAvgInt < 0) {
+                      totalAvgString = "U";
+                    }
 
                     return Card(
                       elevation: 3,
@@ -199,22 +268,25 @@ class _ClassAssessmentState extends State<ClassAssessment> {
                             const SizedBox(height: 5),
 
                             // 📚 SUBJECTS
-                            ...student.subjectsScore.map((sub) {
-                              double score = sub.scoreBOT ?? 0;
+                            ...student.subjectsScoreTerm2.map((sub) {
+                              double score = sub.scoreBOT;
                               int agg = getAggregate(score);
-
+                              var scorename = score.toInt().toString();
+                              if (score == -1) {
+                                scorename = 'x';
+                              }
                               return Text(
-                                "${sub.subjectName}: ${score.toInt()} (Agg: $agg)",
+                                "${sub.subjectName}: $scorename (Agg: $agg)",
                                 style: const TextStyle(fontSize: 14),
                               );
-                            }).toList(),
+                            }),
 
                             const Divider(),
 
                             // 📊 SUMMARY
                             Text(
-                              "Total: ${totalBOT(student.subjectsScore).toInt()}   |   "
-                              "Avg: ${averageScore(student.subjectsScore).toStringAsFixed(1)}",
+                              "Total: $totalBOTString   |   "
+                              "Avg: $totalAvgString",
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -222,8 +294,8 @@ class _ClassAssessmentState extends State<ClassAssessment> {
                             ),
 
                             Text(
-                              "Agg: ${totalAggregate(student.subjectsScore)}   |   "
-                              "Div: ${getDivision(totalAggregate(student.subjectsScore))}",
+                              "Agg: ${totalAggregate(student.subjectsScoreTerm2)}   |   "
+                              "Div: ${getDivision(totalAggregate(student.subjectsScoreTerm2))}",
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -253,6 +325,65 @@ class _ClassAssessmentState extends State<ClassAssessment> {
             ),
           ),
         ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniStartFloat,
+      floatingActionButton: Align(
+        alignment: Alignment.bottomCenter,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(
+              width: 350,
+              height: 70,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.5), // transparency
+                borderRadius: BorderRadius.circular(20),
+
+                // Glass border
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
+
+                // Optional shadow
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  FloatingActionButton(
+                    child: Icon(Icons.analytics),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) { return
+SubjectAnalysis(
+  schoolId: widget.schoolId,
+  model: widget.model,
+);
+                      }));
+                    },
+                  ),
+
+                  FloatingActionButton(
+                    child: Icon(Icons.insights),
+                    onPressed: () {
+                       Navigator.push(context, MaterialPageRoute(builder: (context) { return
+SubjectContribution(
+  schoolId: widget.schoolId,
+  model: widget.model,
+);}));
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

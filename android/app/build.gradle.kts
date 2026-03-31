@@ -25,7 +25,7 @@ android {
     create("release") {
         keyAlias = keystoreProperties.getProperty("keyAlias")
         keyPassword = keystoreProperties.getProperty("keyPassword")
-        storeFile = file(keystoreProperties.getProperty("storeFile"))
+        storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
         storePassword = keystoreProperties.getProperty("storePassword")
     }
 }
@@ -33,6 +33,7 @@ android {
 
     namespace = "com.ssuubi.banco_mobile"
     compileSdk = 36 
+   
     ndkVersion = "27.0.12077973"
 
     compileOptions {

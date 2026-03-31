@@ -228,7 +228,9 @@ class MyApp extends StatelessWidget {
                     final subscription = data?['subscription']
                         .toString()
                         .toLowerCase();
-                    print('subscription: $subscription');
+                    if (kDebugMode) {
+                      print('subscription: $subscription');
+                    }
 
                     if (asyncSnapshot.connectionState ==
                         ConnectionState.waiting) {
