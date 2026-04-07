@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/HeadTeacher/AssessmentTerm1/subject_analysis.dart';
 import 'package:banco_mobile/HeadTeacher/AssessmentTerm1/subject_contribution.dart';
+import 'package:banco_mobile/HeadTeacher/AssessmentTerm2/class_assessment_term2.dart';
+import 'package:banco_mobile/HeadTeacher/AssessmentTerm3/class_assessment_term3.dart';
 // import 'package:banco_mobile/P4/student_p4.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:flutter/material.dart';
@@ -108,6 +110,8 @@ class _ClassAssessmentState extends State<ClassAssessment> {
     }
   }
 
+  bool isSearching = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,67 +121,102 @@ class _ClassAssessmentState extends State<ClassAssessment> {
           onTap: () => Navigator.pop(context),
         ),
         backgroundColor: mainColor,
-        title: Text(schoolname, style: whiteText),
+        title: isSearching
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  cursorColor: Colors.white,
+                  controller: searchController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: "Search student...",
+                    hintStyle: const TextStyle(color: Colors.white70),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white70),
+
+                    // CLEAR BUTTON
+                    // suffixIcon: searchQuery.isNotEmpty
+                    //     ? IconButton(
+                    //         icon: const Icon(Icons.clear, color: Colors.white),
+                    //         onPressed: () {
+                    //           searchController.clear();
+                    //           setState(() {
+                    //             searchQuery = "";
+                    //           });
+                    //         },
+                    //       )
+                    //     : null,
+
+                    border: InputBorder.none,
+                  ),
+
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value.toLowerCase();
+                    });
+                  },
+                ),
+              )
+            : Text('Class Assessment Term I', style: whiteText),
+
+        actions: [
+          IconButton(
+            icon: Icon(
+              isSearching ? Icons.close : Icons.search,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                isSearching = !isSearching;
+                searchController.clear();
+                searchQuery = "";
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // 🔎 SEARCH BAR
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.5), // transparency
-                  borderRadius: BorderRadius.circular(20),
+Container(
+  width: double.infinity,
+  height: 70,
+  decoration: BoxDecoration(
+    color: Colors.white.withValues(alpha: 0.5), // transparency
+    borderRadius: BorderRadius.circular(20),
 
-                  // Glass border
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    width: 1.5,
-                  ),
+    // Glass border
+    border: Border.all(
+      color: Colors.white.withValues(alpha: 0.5),
+      width: 1.5,
+    ),
 
-                  // Optional shadow
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: "Search student...",
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                searchController.clear();
-                                setState(() {
-                                  searchQuery = "";
-                                });
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        searchQuery = value.toLowerCase();
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-
+    // Optional shadow
+    boxShadow: [
+      BoxShadow(
+        color: Colors.white.withValues(alpha: 0.5),
+        blurRadius: 10,
+      ),
+    ],
+  ),
+  child:
+  Row(
+    mainAxisAlignment: MainAxisAlignment.spaceAround,
+    children: [
+        FloatingActionButton(
+          child: Text('Term II'),
+        onPressed: () {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) {
+return ClassAssessmentTerm2(model: widget.model, schoolId: widget.schoolId);
+        }));
+        }),
+        FloatingActionButton(
+          child: Text('Term III'),
+        onPressed: () {
+           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) {
+return ClassAssessmentTerm3(model: widget.model, schoolId: widget.schoolId);
+        }));
+        })
+  ],)
+  ),
           // 🔥 STUDENT LIST
           Expanded(
             child: StreamBuilder(
@@ -360,23 +399,34 @@ class _ClassAssessmentState extends State<ClassAssessment> {
                   FloatingActionButton(
                     child: Icon(Icons.analytics),
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) { return
-SubjectAnalysis(
-  schoolId: widget.schoolId,
-  model: widget.model,
-);
-                      }));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return SubjectAnalysis(
+                              schoolId: widget.schoolId,
+                              model: widget.model,
+                            );
+                          },
+                        ),
+                      );
                     },
                   ),
 
                   FloatingActionButton(
                     child: Icon(Icons.insights),
                     onPressed: () {
-                       Navigator.push(context, MaterialPageRoute(builder: (context) { return
-SubjectContribution(
-  schoolId: widget.schoolId,
-  model: widget.model,
-);}));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return SubjectContribution(
+                              schoolId: widget.schoolId,
+                              model: widget.model,
+                            );
+                          },
+                        ),
+                      );
                     },
                   ),
                 ],
