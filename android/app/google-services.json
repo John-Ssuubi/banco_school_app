@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:607942899331:android:095d0b80d6c22c72fb4db6",
         "android_client_info": {
-          "package_name": "com.example.banco"
+          "package_name": "com.ssuubi.banco_mobile"
         }
       },
       "oauth_client": [
@@ -17,7 +17,7 @@
           "client_id": "607942899331-3connc38dbp3igv1a7j765e7j7ltksat.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.banco",
+            "package_name": "com.ssuubi.banco_mobile",
             "certificate_hash": "eca891c7f0985253a9535f61285ebc94a4ba67db"
           }
         },
@@ -42,7 +42,7 @@
               "client_id": "607942899331-7p6tlq9r0fv2m9uam3k2sstrns3sg6qe.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.banco"
+                "bundle_id": "com.ssuubi.banco_mobile"
               }
             }
           ]
@@ -53,10 +53,18 @@
       "client_info": {
         "mobilesdk_app_id": "1:607942899331:android:1d02ea3ff5ed1590fb4db6",
         "android_client_info": {
-          "package_name": "com.example.banco_mobile"
+          "package_name": "com.ssuubi.banco_mobile_mobile"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "607942899331-bi0jsm4dp2l1vpcaocql2jj68bf8042b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ssuubi.banco_mobile_mobile",
+            "certificate_hash": "eca891c7f0985253a9535f61285ebc94a4ba67db"
+          }
+        },
         {
           "client_id": "607942899331-of0r69k20r8md0c8c8ou4cbnqh859h4t.apps.googleusercontent.com",
           "client_type": 3
@@ -78,7 +86,7 @@
               "client_id": "607942899331-7p6tlq9r0fv2m9uam3k2sstrns3sg6qe.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.banco"
+                "bundle_id": "com.ssuubi.banco_mobile"
               }
             }
           ]
@@ -122,7 +130,7 @@
               "client_id": "607942899331-7p6tlq9r0fv2m9uam3k2sstrns3sg6qe.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.banco"
+                "bundle_id": "com.ssuubi.banco_mobile"
               }
             }
           ]

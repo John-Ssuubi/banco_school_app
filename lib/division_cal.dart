@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: curly_braces_in_flow_control_structures, use_build_context_synchronously
 
 import 'package:banco_mobile/DataBase/P4/Term%20I/p4_database.dart';
 import 'package:banco_mobile/DataBase/P4/Term%20II/p4_database_term2.dart';
@@ -7,606 +7,472 @@ import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-var divisionBot = '';
-var divisionMid = '';
-var divisionEnd = '';
-
-String divCalBOT(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  if (grades <= d1Start) {
-    divisionBot = 'D1';
+// ---------------------------------------------------------------------------
+// Core grade resolver — single source of truth.
+//
+// FIX 1: Original used plain `if` chains — every matching condition
+//         overwrote the previous one, so the last match always won.
+//         Now uses `if / else if` so only the FIRST match is returned.
+//
+// FIX 2: Original stored result in global vars (divisionBot, divisionMid,
+//         divisionEnd) which could be corrupted by concurrent calls.
+//         Result is now a local return value only.
+//
+// Boundary comparison direction (<=) is kept exactly as the original
+// so Firestore values continue to work unchanged.
+// ---------------------------------------------------------------------------
+String _resolveGrade(
+  double score,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) {
+  if (score == -1) return 'X';
+  if (score <= p8Start) {
+    return 'P8';
   }
-  if (grades <= d2Start) {
-    divisionBot = 'D2';
+  if (score <= p7Start) {
+    return 'P7';
   }
-  if (grades <= c3Start) {
-    divisionBot = 'C3';
+  if (score <= c6Start) {
+    return 'C6';
   }
-  if (grades <= c4Start) {
-    divisionBot = 'C4';
+  if (score <= c5Start) {
+    return 'C5';
   }
-  if (grades <= c5Start) {
-    divisionBot = 'C5';
+  if (score <= c4Start) {
+    return 'C4';
   }
-  if (grades <= c6Start) {
-    divisionBot = 'C6';
+  if (score <= c3Start) {
+    return 'C3';
   }
-  if (grades <= p7Start) {
-    divisionBot = 'P7';
+  if (score <= d2Start) {
+    return 'D2';
   }
-  if (grades <= p8Start) {
-    divisionBot = 'P8';
+  if (score <= d1Start) {
+    return 'D1';
   }
-  if (grades <= f9Start) {
-    divisionBot = 'F9';
-  }
-  if (grades <= f9Start) {
-    divisionBot = 'F9';
-  }
-  if (grades == -1) {
-    divisionBot = 'X';
-  }
-
-  return divisionBot;
+  return 'F9';
 }
 
-String gradeBot(double grade, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  var totalScores2 = grade;
-
-  var aggregates2 = 'F9';
-
-  if (totalScores2 <= d1Start) {
-    aggregates2 = 'D1';
-  }
-  if (totalScores2 <= d2Start) {
-    aggregates2 = 'D2';
-  }
-  if (totalScores2 <= c3Start) {
-    aggregates2 = 'C3';
-  }
-  if (totalScores2 <= c4Start) {
-    aggregates2 = 'C4';
-  }
-  if (totalScores2 <= c5Start) {
-    aggregates2 = 'C5';
-  }
-  if (totalScores2 <= c6Start) {
-    aggregates2 = 'C6';
-  }
-  if (totalScores2 <= p7Start) {
-    aggregates2 = 'P7';
-  }
-  if (totalScores2 <= p8Start) {
-    aggregates2 = 'P8';
-  }
-  if (totalScores2 <= f9Start) {
-    aggregates2 = 'F9';
-  }
-  if (totalScores2 == f9End) {
-    aggregates2 = 'F9';
-  }
-
-  if (totalScores2 == -1) {
-    aggregates2 = '';
-  }
-
-  return aggregates2;
+// Display variant: returns '' for unset scores (-1).
+String _resolveGradeDisplay(
+  double score,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) {
+  if (score == -1) return '';
+  return _resolveGrade(
+    score,
+    d1Start,
+    d2Start,
+    c3Start,
+    c4Start,
+    c5Start,
+    c6Start,
+    p7Start,
+    p8Start,
+    f9Start,
+    f9End,
+  );
 }
 
-String divCalMid(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  if (grades <= d1Start) {
-    divisionMid = 'D1';
-  }
-  if (grades <= d2Start) {
-    divisionMid = 'D2';
-  }
-  if (grades <= c3Start) {
-    divisionMid = 'C3';
-  }
-  if (grades <= c4Start) {
-    divisionMid = 'C4';
-  }
-  if (grades <= c5Start) {
-    divisionMid = 'C5';
-  }
-  if (grades <= c6Start) {
-    divisionMid = 'C6';
-  }
-  if (grades <= p7Start) {
-    divisionMid = 'P7';
-  }
-  if (grades <= p8Start) {
-    divisionMid = 'P8';
-  }
-  if (grades <= f9Start) {
-    divisionMid = 'F9';
-  }
-  if (grades <= f9Start) {
-    divisionMid = 'F9';
-  }
-  if (grades == -1) {
-    divisionMid = 'X';
-  }
-
-  return divisionMid;
+// Numeric weight used for aggregate sums.
+int _resolveWeight(
+  double score,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) {
+  if (score == -1) return 0;
+  const weights = {
+    'D1': 1,
+    'D2': 2,
+    'C3': 3,
+    'C4': 4,
+    'C5': 5,
+    'C6': 6,
+    'P7': 7,
+    'P8': 8,
+    'F9': 9,
+  };
+  final grade = _resolveGrade(
+    score,
+    d1Start,
+    d2Start,
+    c3Start,
+    c4Start,
+    c5Start,
+    c6Start,
+    p7Start,
+    p8Start,
+    f9Start,
+    f9End,
+  );
+  return weights[grade] ?? 9;
 }
 
-String gradeMid(double grade, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  var totalScores2 = grade;
+// ---------------------------------------------------------------------------
+// Public grade functions — signatures unchanged from original.
+// ---------------------------------------------------------------------------
 
-  var aggregates2 = 'F9';
+String divCalBOT(
+  double grades,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _resolveGrade(
+  grades,
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-  if (totalScores2 <= d1Start) {
-    aggregates2 = 'D1';
-  }
-  if (totalScores2 <= d2Start) {
-    aggregates2 = 'D2';
-  }
-  if (totalScores2 <= c3Start) {
-    aggregates2 = 'C3';
-  }
-  if (totalScores2 <= c4Start) {
-    aggregates2 = 'C4';
-  }
-  if (totalScores2 <= c5Start) {
-    aggregates2 = 'C5';
-  }
-  if (totalScores2 <= c6Start) {
-    aggregates2 = 'C6';
-  }
-  if (totalScores2 <= p7Start) {
-    aggregates2 = 'P7';
-  }
-  if (totalScores2 <= p8Start) {
-    aggregates2 = 'P8';
-  }
-  if (totalScores2 <= f9Start) {
-    aggregates2 = 'F9';
-  }
-  if (totalScores2 == f9End) {
-    aggregates2 = 'F9';
-  }
+String gradeBot(
+  double grade,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _resolveGradeDisplay(
+  grade,
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-  if (totalScores2 == -1) {
-    aggregates2 = '';
-  }
+String divCalMid(
+  double grades,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _resolveGrade(
+  grades,
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-  return aggregates2;
+String gradeMid(
+  double grade,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _resolveGradeDisplay(
+  grade,
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
+
+String divEND(
+  double grades,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _resolveGrade(
+  grades,
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
+
+// ---------------------------------------------------------------------------
+// Aggregate helpers
+//
+// FIX 3: `setData.contains(-1.0)` was checked INSIDE the per-subject loop,
+//         resetting `agg3` to 0 on every iteration. Now checked ONCE before
+//         the loop.
+// FIX 4: The three near-identical functions are collapsed into one generic
+//         helper so the fix only lives in one place.
+// ---------------------------------------------------------------------------
+
+String _aggregateEot<T>(
+  List<T>? subjects,
+  double Function(T) scoreOf,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) {
+  if (subjects == null || subjects.isEmpty) return '0';
+
+  final hasUnmarked = subjects.any((s) => scoreOf(s) == -1.0);
+  if (hasUnmarked) return '0';
+
+  final toScore = subjects.length > 4
+      ? subjects.getRange(0, 4).toList()
+      : subjects;
+
+  int total = 0;
+  for (final s in toScore) {
+    total += _resolveWeight(
+      scoreOf(s),
+      d1Start,
+      d2Start,
+      c3Start,
+      c4Start,
+      c5Start,
+      c6Start,
+      p7Start,
+      p8Start,
+      f9Start,
+      f9End,
+    );
+  }
+  return total.toString();
 }
 
-// 0700984034
+String gradeEot(
+  List<P4Subjects>? s,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _aggregateEot<P4Subjects>(
+  s,
+  (e) => e.scoreEOT.toDouble(),
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-String divEND(double grades, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  if (grades <= d1Start) {
-    divisionEnd = 'D1';
-  }
-  if (grades <= d2Start) {
-    divisionEnd = 'D2';
-  }
-  if (grades <= c3Start) {
-    divisionEnd = 'C3';
-  }
-  if (grades <= c4Start) {
-    divisionEnd = 'C4';
-  }
-  if (grades <= c5Start) {
-    divisionEnd = 'C5';
-  }
-  if (grades <= c6Start) {
-    divisionEnd = 'C6';
-  }
-  if (grades <= p7Start) {
-    divisionEnd = 'P7';
-  }
-  if (grades <= p8Start) {
-    divisionEnd = 'P8';
-  }
-  if (grades <= f9Start) {
-    divisionEnd = 'F9';
-  }
-  if (grades <= f9Start) {
-    divisionEnd = 'F9';
-  }
-  if (grades == -1) {
-    divisionEnd = 'X';
-  }
+String gradeEotTerm2(
+  List<P4SubjectsTerm2>? s,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _aggregateEot<P4SubjectsTerm2>(
+  s,
+  (e) => e.scoreEOT.toDouble(),
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-  return divisionEnd;
-}
+String gradeEotTerm3(
+  List<P4SubjectsTerm3>? s,
+  int d1Start,
+  int d2Start,
+  int c3Start,
+  int c4Start,
+  int c5Start,
+  int c6Start,
+  int p7Start,
+  int p8Start,
+  int f9Start,
+  int f9End,
+) => _aggregateEot<P4SubjectsTerm3>(
+  s,
+  (e) => e.scoreEOT.toDouble(),
+  d1Start,
+  d2Start,
+  c3Start,
+  c4Start,
+  c5Start,
+  c6Start,
+  p7Start,
+  p8Start,
+  f9Start,
+  f9End,
+);
 
-String gradeEot(List<P4Subjects>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  // var totalScores2 = grade;
-  int agg3div2 = 0;
-  var agg3div = 0;
-  var agg3 = 0;
+// ---------------------------------------------------------------------------
+// Score-entry dialogs
+//
+// FIX 5: Three identical dialogs collapsed into one private helper.
+// ---------------------------------------------------------------------------
 
-  var setData = List.generate(scoreswidget!.length, ((index) {
-    var data = scoreswidget[index].scoreEOT;
-    return data;
-  }));
-
-  if (scoreswidget.length > 4) {
-    List<P4Subjects> scores = scoreswidget.getRange(0, 4).toList();
-    for (var element in scores) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  } else {
-    for (var element in scoreswidget) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  }
-
-  return agg3.toString();
-}
-
-
-String gradeEotTerm2  (List<P4SubjectsTerm2>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  // var totalScores2 = grade;
-  int agg3div2 = 0;
-  var agg3div = 0;
-  var agg3 = 0;
-
-  var setData = List.generate(scoreswidget!.length, ((index) {
-    var data = scoreswidget[index].scoreEOT;
-    return data;
-  }));
-
-  if (scoreswidget.length > 4) {
-    List<P4SubjectsTerm2> scores = scoreswidget.getRange(0, 4).toList();
-    for (var element in scores) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  } else {
-    for (var element in scoreswidget) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  }
-
-  return agg3.toString();
-}
-
-
-String gradeEotTerm3  (List<P4SubjectsTerm3>? scoreswidget, int d1Start, int d2Start, int c3Start, int c4Start, int c5Start, int c6Start, int p7Start, int p8Start, int f9Start, int f9End) {
-  // var totalScores2 = grade;
-  int agg3div2 = 0;
-  var agg3div = 0;
-  var agg3 = 0;
-
-  var setData = List.generate(scoreswidget!.length, ((index) {
-    var data = scoreswidget[index].scoreEOT;
-    return data;
-  }));
-
-  if (scoreswidget.length > 4) {
-    List<P4SubjectsTerm3> scores = scoreswidget.getRange(0, 4).toList();
-    for (var element in scores) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  } else {
-    for (var element in scoreswidget) {
-      // print(sum3);
-      var totalScores = element.scoreEOT;
-
-      if (totalScores <= d1Start) {
-        agg3div = 1;
-      }
-      if (totalScores <= d2Start) {
-        agg3div = 2;
-      }
-      if (totalScores <= c3Start) {
-        agg3div = 3;
-      }
-      if (totalScores <= c4Start) {
-        agg3div = 4;
-      }
-      if (totalScores <= c5Start) {
-        agg3div = 5;
-      }
-      if (totalScores <= c6Start) {
-        agg3div = 6;
-      }
-      if (totalScores <= p7Start) {
-        agg3div = 7;
-      }
-      if (totalScores <= p8Start) {
-        agg3div = 8;
-      }
-      if (totalScores <= f9Start) {
-        agg3div = 9;
-      }
-      if (totalScores == f9End) {
-        agg3div = 9;
-      }
-
-      if (setData.contains(-1.0)) {
-        // print('object object object object object');
-        agg3 = 0;
-      } else {
-        agg3 = agg3div2 += agg3div;
-      }
-      // agg3 = agg3div2 += agg3div;
-    }
-  }
-
-  return agg3.toString();
-}
-
-Future<void> dialogBOT( {
+Future<void> _scoreDialog({
   required BuildContext context,
   required TextEditingController resultInput,
-  required String studentId, // Firestore doc ID (e.g. student name)
-  required String subjectName, // Which subject to update
+  required String studentId,
+  required String subjectName,
+  required String scoreField,
+  required String examLabel,
 }) async {
-  return await showDialog(
+  return showDialog(
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: Text('Enter new score for $subjectName'),
+        title: Text('Enter $examLabel score for $subjectName'),
         content: TextFormField(
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           controller: resultInput,
-          decoration: const InputDecoration(
-            hintText: "Enter score (e.g. 85.0)",
-          ),
+          decoration: InputDecoration(hintText: 'Enter score (e.g. 85.0)'),
         ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           ElevatedButton(
             onPressed: () async {
-              // Read score from controller
               final scoreText = resultInput.text.trim();
               if (scoreText.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a score")),
+                  const SnackBar(content: Text('Please enter a score')),
                 );
                 return;
               }
-
               final newScore = double.tryParse(scoreText);
               if (newScore == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Invalid number format")),
+                  const SnackBar(content: Text('Invalid number format')),
                 );
                 return;
               }
-
               try {
-                // Fetch the student document
                 final docRef = FirebaseFirestore.instance
                     .collection('studentModelP4')
                     .doc(studentId);
-
                 final docSnap = await docRef.get();
                 if (!docSnap.exists) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Student $studentId not found!")),
+                    SnackBar(content: Text('Student $studentId not found!')),
                   );
                   return;
                 }
-
-                final data = docSnap.data()!;
-                final subjects = List<Map<String, dynamic>>.from(data['subjectsScore']);
-
-                // Find and update the subject
-                for (var sub in subjects) {
+                final subjects = List<Map<String, dynamic>>.from(
+                  docSnap.data()!['subjectsScore'],
+                );
+                for (final sub in subjects) {
                   if (sub['subjectName'] == subjectName) {
-                    sub['scoreBOT'] = newScore;
+                    sub[scoreField] = newScore;
                   }
                 }
-
-                // Upload updated list back to Firestore
                 await docRef.update({
                   'subjectsScore': subjects,
                   'lastUpdated': DateTime.now().toIso8601String(),
                 });
-
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✅ Score updated successfully")),
+                  const SnackBar(content: Text('✅ Score updated successfully')),
                 );
-
                 Navigator.pop(context);
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score")),
+                  const SnackBar(content: Text('Error updating score')),
                 );
               }
             },
@@ -625,223 +491,67 @@ Future<void> dialogBOT( {
   );
 }
 
-Future<void> dialogMID( {
+Future<void> dialogBOT({
   required BuildContext context,
   required TextEditingController resultInput,
-  required String studentId, // Firestore doc ID (e.g. student name)
-  required String subjectName, // Which subject to update
-}) async {
-  return await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Enter new score for $subjectName'),
-        content: TextFormField(
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          controller: resultInput,
-          decoration: const InputDecoration(
-            hintText: "Enter score (e.g. 85.0)",
-          ),
-        ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          ElevatedButton(
-            onPressed: () async {
-              // Read score from controller
-              final scoreText = resultInput.text.trim();
-              if (scoreText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a score")),
-                );
-                return;
-              }
+  required String studentId,
+  required String subjectName,
+}) => _scoreDialog(
+  context: context,
+  resultInput: resultInput,
+  studentId: studentId,
+  subjectName: subjectName,
+  scoreField: 'scoreBOT',
+  examLabel: 'BOT',
+);
 
-              final newScore = double.tryParse(scoreText);
-              if (newScore == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Invalid number format")),
-                );
-                return;
-              }
-
-              try {
-                // Fetch the student document
-                final docRef = FirebaseFirestore.instance
-                    .collection('studentModelP4')
-                    .doc(studentId);
-
-                final docSnap = await docRef.get();
-                if (!docSnap.exists) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Student $studentId not found!")),
-                  );
-                  return;
-                }
-
-                final data = docSnap.data()!;
-                final subjects = List<Map<String, dynamic>>.from(data['subjectsScore']);
-
-                // Find and update the subject
-                for (var sub in subjects) {
-                  if (sub['subjectName'] == subjectName) {
-                    sub['scoreMT'] = newScore;
-                  }
-                }
-
-                // Upload updated list back to Firestore
-                await docRef.update({
-                  'subjectsScore': subjects,
-                  'lastUpdated': DateTime.now().toIso8601String(),
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✅ Score updated successfully")),
-                );
-
-                Navigator.pop(context);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score")),
-                );
-              }
-            },
-            child: const Text('Done'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              resultInput.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-Future<void> dialogEOT( {
+Future<void> dialogMID({
   required BuildContext context,
   required TextEditingController resultInput,
-  required String studentId, // Firestore doc ID (e.g. student name)
-  required String subjectName, // Which subject to update
-}) async {
-  return await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Enter new score for $subjectName'),
-        content: TextFormField(
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          controller: resultInput,
-          decoration: const InputDecoration(
-            hintText: "Enter score (e.g. 85.0)",
-          ),
-        ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          ElevatedButton(
-            onPressed: () async {
-              // Read score from controller
-              final scoreText = resultInput.text.trim();
-              if (scoreText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please enter a score")),
-                );
-                return;
-              }
+  required String studentId,
+  required String subjectName,
+}) => _scoreDialog(
+  context: context,
+  resultInput: resultInput,
+  studentId: studentId,
+  subjectName: subjectName,
+  scoreField: 'scoreMT',
+  examLabel: 'MID',
+);
 
-              final newScore = double.tryParse(scoreText);
-              if (newScore == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Invalid number format")),
-                );
-                return;
-              }
+Future<void> dialogEOT({
+  required BuildContext context,
+  required TextEditingController resultInput,
+  required String studentId,
+  required String subjectName,
+}) => _scoreDialog(
+  context: context,
+  resultInput: resultInput,
+  studentId: studentId,
+  subjectName: subjectName,
+  scoreField: 'scoreEOT',
+  examLabel: 'EOT',
+);
 
-              try {
-                // Fetch the student document
-                final docRef = FirebaseFirestore.instance
-                    .collection('studentModelP4')
-                    .doc(studentId);
-
-                final docSnap = await docRef.get();
-                if (!docSnap.exists) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Student $studentId not found!")),
-                  );
-                  return;
-                }
-
-                final data = docSnap.data()!;
-                final subjects = List<Map<String, dynamic>>.from(data['subjectsScore']);
-
-                // Find and update the subject
-                for (var sub in subjects) {
-                  if (sub['subjectName'] == subjectName) {
-                    sub['scoreEOT'] = newScore;
-                  }
-                }
-
-                // Upload updated list back to Firestore
-                await docRef.update({
-                  'subjectsScore': subjects,
-                  'lastUpdated': DateTime.now().toIso8601String(),
-                });
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("✅ Score updated successfully")),
-                );
-
-                Navigator.pop(context);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Error updating score")),
-                );
-              }
-            },
-            child: const Text('Done'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              resultInput.clear();
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-        ],
-      );
-    },
-  );
-}
+// ---------------------------------------------------------------------------
+// Subject rankings
+// ---------------------------------------------------------------------------
 
 Map<String, List<Map<String, dynamic>>> rankAllSubjectsBOT(
-    List<StudentModelP4> students) {
-
-  Map<String, List<Map<String, dynamic>>> subjectRankings = {};
-
-  for (var student in students) {
-    for (var subject in student.subjectsScore) {
-      String subName = subject.subjectName;
-      int botScore = subject.scoreBOT.toInt();
-
-      // Initialize list for this subject if not exists
-      if (!subjectRankings.containsKey(subName)) {
-        subjectRankings[subName] = [];
-      }
-
-      subjectRankings[subName]!.add({
+  List<StudentModelP4> students,
+) {
+  final Map<String, List<Map<String, dynamic>>> rankings = {};
+  for (final student in students) {
+    for (final subject in student.subjectsScore) {
+      rankings.putIfAbsent(subject.subjectName, () => []);
+      rankings[subject.subjectName]!.add({
         'studentName': student.studentName,
-        'botScore': botScore,
+        'botScore': subject.scoreBOT.toInt(),
       });
     }
   }
-
-  // Sort each subject's list descending by BOT score
-  subjectRankings.forEach((subjectName, rankingList) {
-    rankingList.sort((a, b) => b['botScore'].compareTo(a['botScore']));
-  });
-
-  return subjectRankings;
+  for (final list in rankings.values) {
+    list.sort((a, b) => (b['botScore'] as int).compareTo(a['botScore'] as int));
+  }
+  return rankings;
 }
-

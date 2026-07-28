@@ -38,8 +38,6 @@ class _StatHtTermIState extends State<StatHtTermI> {
 
   bool gradingLoaded = false;
 
-  
-
   Future<void> _loadGrading() async {
     try {
       final doc = await FirebaseFirestore.instance

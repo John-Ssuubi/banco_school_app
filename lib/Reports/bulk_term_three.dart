@@ -1,181 +1,106 @@
+// ignore_for_file: depend_on_referenced_packages, unused_local_variable, use_build_context_synchronously
+
+import 'dart:io';
+import 'dart:developer' as developer;
+
+import 'package:banco_mobile/DataBase/P4/Term%20II/p4_database_term2.dart';
+import 'package:banco_mobile/DataBase/P4/Term%20III/p4_database_term3.dart';
+import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/Reports/comments.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:path_provider/path_provider.dart';
 
-import '../DataBase/P4/p4_student_model.dart';
+class BulkPrintP4Term3 extends StatefulWidget {
+  final String schoolId;
+  final String model;
+  final int d1Start;
+  final int d2Start;
+  final int c3Start;
+  final int c4Start;
+  final int c5Start;
+  final int c6Start;
+  final int p7Start;
+  final int p8Start;
+  final int f9Start;
+  final int f9End;
+  final int d1End;
+  final int d2End;
+  final int c3End;
+  final int c4End;
+  final int c5End;
+  final int c6End;
+  final int p7End;
+  final int p8End;
 
-class ReportCardPdf {
-  static Future<void> generate({
-    required String moto,
-    required String address,
-    required contacts,
-    required String pobox,
-    required String email,
-    required StudentModelP4 student,
-    required String schoolName,
-    required String term,
-    required int year,
-    required int d1Start,
-    required int d2Start,
-    required int c3Start,
-    required int c4Start,
-    required int c5Start,
-    required int c6Start,
-    required int p7Start,
-    required int p8Start,
-    required int f9Start,
-    required int f9End,
-  }) async {
-    final pdf = pw.Document();
+  const BulkPrintP4Term3({
+    super.key,
+    required this.schoolId,
+    required this.model,
+    required this.d1Start,
+    required this.d2Start,
+    required this.c3Start,
+    required this.c4Start,
+    required this.c5Start,
+    required this.c6Start,
+    required this.p7Start,
+    required this.p8Start,
+    required this.f9Start,
+    required this.f9End,
+    required this.d1End,
+    required this.d2End,
+    required this.c3End,
+    required this.c4End,
+    required this.c5End,
+    required this.c6End,
+    required this.p7End,
+    required this.p8End,
+  });
 
-    // ─── PDF colours styles──
-    const headerBlue = PdfColor.fromInt(0xFF295FA6);
-    const lightBlue = PdfColor.fromInt(0xFFDDE8F5);
-    const accentGold = PdfColor.fromInt(0xFFF0A500);
-    const rowAlt = PdfColor.fromInt(0xFFF5F8FD);
-    const borderColor = PdfColor.fromInt(0xFFB0C4DE);
-    const textDark = PdfColor.fromInt(0xFF1A1A2E);
-    final String currentYear = DateTime.now().year.toString();
-    const headerBlue0 = PdfColor.fromInt(0xFF295FA6);
-    const lightBlue0 = PdfColor.fromInt(0xFFDDE8F5);
-    const accentGold0 = PdfColor.fromInt(0xFFF0A500);
-    const borderColor0 = PdfColor.fromInt(0xFFB0C4DE);
-    const textDark0 = PdfColor.fromInt(0xFF1A1A2E);
+  @override
+  State<BulkPrintP4Term3> createState() => _BulkPrintP4Term2T3State();
+}
 
-    
+class _BulkPrintP4Term2T3State extends State<BulkPrintP4Term3> {
+  final String currentYear = DateTime.now().year.toString();
+  bool _isPrinting = false;
 
-
-    pw.Widget sectionLabel(String text) => pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: pw.BoxDecoration(
-        color: lightBlue0,
-        border: pw.Border(left: pw.BorderSide(color: accentGold0, width: 3)),
-      ),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(
-          fontWeight: pw.FontWeight.bold,
-          fontSize: 8.5,
-          color: headerBlue0,
-        ),
-      ),
-    );
-
-    /// Table header cell
-    pw.Widget th(String text) => pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 5),
-      child: pw.Text(
-        text,
-        style: pw.TextStyle(
-          fontWeight: pw.FontWeight.bold,
-          fontSize: 7.5,
-          color: PdfColors.white,
-        ),
-        textAlign: pw.TextAlign.center,
-      ),
-    );
-
-    /// Normal data cell (left-aligned)
-    pw.Widget td(String text) => pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: pw.Text(
-        text,
-        style: const pw.TextStyle(fontSize: 7.5, color: textDark0),
-      ),
-    );
-
-    /// Centre-aligned data cell
-    pw.Widget tdCenter(String text) => pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: pw.Text(
-        text,
-        style: const pw.TextStyle(fontSize: 7.5, color: textDark0),
-        textAlign: pw.TextAlign.center,
-      ),
-    );
-
-    /// Grade cell – colour-coded by grade letter
-    pw.Widget tdGrade(String label) {
-      PdfColor bg;
-      if (label.startsWith('D')) {
-        bg = const PdfColor.fromInt(0xFFD4EDDA); // green tint
-      } else if (label.startsWith('C')) {
-        bg = const PdfColor.fromInt(0xFFFFF3CD); // amber tint
-      } else if (label.startsWith('P')) {
-        bg = const PdfColor.fromInt(0xFFFFE0B2); // orange tint
-      } else {
-        bg = const PdfColor.fromInt(0xFFFFCDD2); // red tint
-      }
-
-      return pw.Container(
-        color: bg,
-        padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: pw.Text(
-          label,
-          style: pw.TextStyle(
-            fontSize: 7.5,
-            fontWeight: pw.FontWeight.bold,
-            color: textDark0,
-          ),
-          textAlign: pw.TextAlign.center,
-        ),
-      );
-    }
-
-    pw.Widget signatureBlock(String role) => pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        pw.Text(
-          role,
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 8.5,
-            color: headerBlue0,
-          ),
-        ),
-        pw.SizedBox(height: 24),
-        pw.Container(width: 140, height: 0.8, color: borderColor0),
-        pw.SizedBox(height: 3),
-        pw.Text(
-          'Signature',
-          style: const pw.TextStyle(fontSize: 7, color: borderColor0),
-        ),
-      ],
-    );
- int gradeFor(double score) {
+  int _gradeFor(double score) {
     // Handle zero or negative scores (missing data)
     if (score == -1) return 9;
-  if (score <= p8Start) {
+  if (score <= widget.p8Start) {
     return 8;
   }
-  if (score <= p7Start) {
+  if (score <= widget.p7Start) {
     return 7;
   }
-  if (score <= c6Start) {
+  if (score <= widget.c6Start) {
     return 6;
   }
-  if (score <= c5Start) {
+  if (score <= widget.c5Start) {
     return 5;
   }
-  if (score <= c4Start) {
+  if (score <= widget.c4Start) {
     return 4;
   }
-  if (score <= c3Start) {
+  if (score <= widget.c3Start) {
     return 3;
   }
-  if (score <= d2Start) {
+  if (score <= widget.d2Start) {
     return 2;
   }
-  if (score <= d1Start) {
+  if (score <= widget.d1Start) {
     return 1;
   }
   return 9;
   }
 
   /// Returns the letter label for a grade, e.g. 1 → "D1", 5 → "C5".
-  String gradeLabel(int grade) {
+  String _gradeLabel(int grade) {
     const labels = {
       1: 'D1',
       2: 'D2',
@@ -190,16 +115,215 @@ class ReportCardPdf {
     return labels[grade] ?? 'F9';
   }
 
-   final allSubjects = student.subjectsScore;
+  // ─── Firestore fetch ──────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> _fetchData() async {
+    final schoolDoc = await FirebaseFirestore.instance
+        .collection('Schools')
+        .doc(widget.schoolId)
+        .get();
 
-   final coreSubjects = allSubjects.length > 4
+    final studentsSnap = await FirebaseFirestore.instance
+        .collection('Schools')
+        .doc(widget.schoolId)
+        .collection('Years')
+        .doc(currentYear)
+        .collection(widget.model)
+        .get();
+
+    final List<StudentModelP4> students = studentsSnap.docs.map((doc) {
+      final data = doc.data();
+
+      List<P4SubjectsTerm3> parseSubjects(dynamic raw) {
+        if (raw == null) return [];
+        return (raw as List).map((e) {
+          final m = e as Map<String, dynamic>;
+          return P4SubjectsTerm3(
+            subjectName: m['subjectName'] ?? '',
+            teacher: m['teacher'] ?? '',
+            scoreBOT: (m['scoreBOT'] as num?)?.toDouble() ?? 0.0,
+            scoreMT: (m['scoreMT'] as num?)?.toDouble() ?? 0.0,
+            scoreEOT: (m['scoreEOT'] as num?)?.toDouble() ?? 0.0,
+          );
+        }).toList();
+      }
+
+      return StudentModelP4(
+        studentName: data['studentName'] ?? '',
+        classIn: data['classIn'] ?? '',
+        stream: data['stream'] ?? '',
+        contactNumber: data['contactNumber'] ?? '',
+        idNin: data['idNin'] ?? '',
+        id: null,
+        extraSub: [],
+        subjectsScore: [],
+        subjectsScoreTerm2: [],
+        subjectsScoreTerm3: parseSubjects(data['subjectsScoreTerm3']),
+      );
+    }).toList();
+
+    return {'school': schoolDoc.data() ?? {}, 'students': students};
+  }
+
+  // ─── PDF colours & styles ─────────────────────────────────────────────────────
+  static const _headerBlue = PdfColor.fromInt(0xFF295FA6);
+  static const _lightBlue = PdfColor.fromInt(0xFFDDE8F5);
+  static const _accentGold = PdfColor.fromInt(0xFFF0A500);
+  static const _rowAlt = PdfColor.fromInt(0xFFF5F8FD);
+  static const _borderColor = PdfColor.fromInt(0xFFB0C4DE);
+  static const _textDark = PdfColor.fromInt(0xFF1A1A2E);
+
+  // ─── Build ────────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      icon: _isPrinting
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Icon(Icons.print_rounded),
+      label: Text(_isPrinting ? 'Preparing...' : 'Print Term III'),
+      onPressed: _isPrinting ? null : _onPrint,
+    );
+  }
+
+  // ─── Print handler ────────────────────────────────────────────────────────────
+  Future<void> _onPrint() async {
+    if (kDebugMode) {
+      print("Starting print process...");
+    }
+
+    if (kDebugMode) {
+      print(widget.d1Start);
+      print(widget.d2Start);
+      print(widget.c3Start);
+      print(widget.c4Start);
+      print(widget.c5Start);
+      print(widget.c6Start);
+      print(widget.p7Start);
+      print(widget.p8Start);
+      print(widget.f9Start);
+    }
+    try {
+      setState(() => _isPrinting = true);
+
+      final fetched = await _fetchData();
+      final schoolData = fetched['school'] as Map<String, dynamic>;
+      final students = fetched['students'] as List<StudentModelP4>;
+
+      if (students.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('No students found')));
+        }
+        return;
+      }
+
+      final doc = pw.Document();
+
+      for (final student in students) {
+        _addStudentPage(doc, student, schoolData);
+      }
+
+      final Uint8List pdfBytes = await doc.save();
+
+      try {
+        await Printing.sharePdf(
+          bytes: pdfBytes,
+          filename: 'P4_Term_I_Reports.pdf',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PDF created successfully!')),
+          );
+        }
+      } catch (e) {
+        developer.log('Share failed: $e', name: 'Print');
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/P4_Term_I_Reports.pdf');
+        await file.writeAsBytes(pdfBytes);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('PDF Saved'),
+              content: Text('Saved to: ${file.path}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      developer.log('Print error: $e', name: 'Print', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Print failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
+  }
+
+  // ─── Per-student page ─────────────────────────────────────────────────────────
+  void _addStudentPage(
+    pw.Document doc,
+    StudentModelP4 student,
+    Map<String, dynamic> schoolData,
+  ) {
+    // ── 1. Calculate per-subject grades ────────────────────────────────────────
+    // Use only the first 4 subjects for aggregate/division (UCE rules)
+    final allSubjects = student.subjectsScoreTerm3;
+    final coreSubjects = allSubjects.length > 4
         ? allSubjects.sublist(0, 4)
         : allSubjects;
 
     bool hasMissingBOT = allSubjects.any((s) => s.scoreBOT == -1.0);
     bool hasMissingMID = allSubjects.any((s) => s.scoreMT == -1.0);
-    allSubjects.any((s) => s.scoreEOT == -1.0);
+    bool hasMissingEOT = allSubjects.any((s) => s.scoreEOT == -1.0);
 
+    // Per-subject grade objects (for the table rows)
+    final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
+      final botGrade = _gradeFor(s.scoreBOT);
+      final midGrade = _gradeFor(s.scoreMT);
+      final eotGrade = _gradeFor(s.scoreEOT);
+      final avgScore = (s.scoreBOT + s.scoreMT + s.scoreEOT) / 3;
+      final avgGrade = _gradeFor(avgScore);
+      if (kDebugMode) {
+        print(botGrade);
+      }
+      return {
+        'subject': s.subjectName,
+        'teacher': s.teacher,
+        'scoreBOT': s.scoreBOT,
+        'botGrade': botGrade,
+        'botLabel': _gradeLabel(botGrade),
+        'scoreMT': s.scoreMT,
+        'midGrade': midGrade,
+        'midLabel': _gradeLabel(midGrade),
+        'scoreEOT': s.scoreEOT,
+        'eotGrade': eotGrade,
+        'eotLabel': _gradeLabel(eotGrade),
+        'avgGrade': avgGrade,
+        'avgLabel': _gradeLabel(avgGrade),
+      };
+    }).toList();
+
+    // ── 2. Total aggregates (sum of per-subject grades, core subjects only) ────
     // ── 2. Total aggregates (sum of per-subject grades, core subjects only) ────
     int agg1 = 0; // BOT total aggregate
     int agg2 = 0; // MID total aggregate
@@ -208,14 +332,14 @@ class ReportCardPdf {
     // Calculate BOT aggregate
     if (!hasMissingBOT) {
       for (final s in coreSubjects) {
-        agg1 += gradeFor(s.scoreBOT);
+        agg1 += _gradeFor(s.scoreBOT);
       }
     }
 
     // Calculate MID aggregate
     if (!hasMissingMID) {
       for (final s in coreSubjects) {
-        agg2 += gradeFor(s.scoreMT);
+        agg2 += _gradeFor(s.scoreMT);
       }
     }
 
@@ -226,7 +350,7 @@ class ReportCardPdf {
       if (score == -1.0) {
         score = 0.0; // This will map to grade 9
       }
-      agg3 += gradeFor(score);
+      agg3 += _gradeFor(score);
     }
 
     // ── 3. Division from EOT aggregate ─────────────────────────────────────────
@@ -239,7 +363,7 @@ class ReportCardPdf {
     // Division U:   Aggregate 33+ OR any subject with grade 9
     // Note: If any subject has grade 9, student automatically gets Division U
 
-    bool hasF9 = coreSubjects.any((s) => gradeFor(s.scoreEOT) == 9);
+    bool hasF9 = coreSubjects.any((s) => _gradeFor(s.scoreEOT) == 9);
     String division = 'U';
 
     if (hasF9) {
@@ -465,65 +589,20 @@ class ReportCardPdf {
         hTComment = hTComment50;
       }
     }
-final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
-      final botGrade = gradeFor(s.scoreBOT);
-      final midGrade = gradeFor(s.scoreMT);
-      final eotGrade = gradeFor(s.scoreEOT);
-      final avgScore = (s.scoreBOT + s.scoreMT + s.scoreEOT) / 3;
-      final avgGrade = gradeFor(avgScore);
-      if (kDebugMode) {
-        print(botGrade);
-      }
-      return {
-        'subject': s.subjectName,
-        'teacher': s.teacher,
-        'scoreBOT': s.scoreBOT,
-        'botGrade': botGrade,
-        'botLabel': gradeLabel(botGrade),
-        'scoreMT': s.scoreMT,
-        'midGrade': midGrade,
-        'midLabel': gradeLabel(midGrade),
-        'scoreEOT': s.scoreEOT,
-        'eotGrade': eotGrade,
-        'eotLabel': gradeLabel(eotGrade),
-        'avgGrade': avgGrade,
-        'avgLabel': gradeLabel(avgGrade),
-      };
-    }).toList();
-   
-    pdf.addPage(
+
+    // ── 5. Build the PDF page ───────────────────────────────────────────────────
+    doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         build: (pw.Context ctx) {
-          pw.Widget infoRow(String label, String value) => pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 2),
-            child: pw.RichText(
-              text: pw.TextSpan(
-                children: [
-                  pw.TextSpan(
-                    text: '$label:  ',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 8.5,
-                      color: headerBlue,
-                    ),
-                  ),
-                  pw.TextSpan(
-                    text: value,
-                    style: const pw.TextStyle(fontSize: 8.5, color: textDark),
-                  ),
-                ],
-              ),
-            ),
-          );
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
               // ── Header band ──────────────────────────────────────────────────
               pw.Container(
                 decoration: const pw.BoxDecoration(
-                  color: headerBlue,
+                  color: _headerBlue,
                   borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
                 ),
                 padding: const pw.EdgeInsets.symmetric(
@@ -533,7 +612,8 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      schoolName.toString().toUpperCase(),
+                      schoolData['school_name']?.toString().toUpperCase() ??
+                          'SCHOOL NAME',
                       style: pw.TextStyle(
                         color: PdfColors.white,
                         fontSize: 16,
@@ -544,7 +624,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                     ),
                     pw.SizedBox(height: 3),
                     pw.Text(
-                      moto.toString(),
+                      schoolData['moto']?.toString() ?? '',
                       style: const pw.TextStyle(
                         color: PdfColors.white,
                         fontSize: 9,
@@ -558,17 +638,17 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                         vertical: 3,
                       ),
                       decoration: pw.BoxDecoration(
-                        color: accentGold,
+                        color: _accentGold,
                         borderRadius: const pw.BorderRadius.all(
                           pw.Radius.circular(4),
                         ),
                       ),
                       child: pw.Text(
-                        'TERM I PROGRESS REPORT ${DateTime.now().year}',
+                        'TERM III PROGRESS REPORT ${DateTime.now().year}',
                         style: pw.TextStyle(
                           fontSize: 9,
                           fontWeight: pw.FontWeight.bold,
-                          color: textDark,
+                          color: _textDark,
                         ),
                       ),
                     ),
@@ -581,11 +661,11 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
               // ── Student info card ────────────────────────────────────────────
               pw.Container(
                 decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: borderColor),
+                  border: pw.Border.all(color: _borderColor),
                   borderRadius: const pw.BorderRadius.all(
                     pw.Radius.circular(5),
                   ),
-                  color: lightBlue,
+                  color: _lightBlue,
                 ),
                 padding: const pw.EdgeInsets.symmetric(
                   horizontal: 12,
@@ -597,13 +677,13 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          infoRow(
+                          _infoRow(
                             'Student Name',
                             student.studentName.toString(),
                           ),
-                          infoRow('Class', student.classIn.toString()),
-                          infoRow('Stream', student.stream.toString()),
-                          infoRow('Year', currentYear.toString()),
+                          _infoRow('Class', student.classIn.toString()),
+                          _infoRow('Stream', student.stream.toString()),
+                          _infoRow('Year', currentYear.toString()),
                         ],
                       ),
                     ),
@@ -611,7 +691,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                       width: 70,
                       height: 70,
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: headerBlue, width: 1.5),
+                        border: pw.Border.all(color: _headerBlue, width: 1.5),
                         borderRadius: const pw.BorderRadius.all(
                           pw.Radius.circular(4),
                         ),
@@ -622,7 +702,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                           'PHOTO',
                           style: const pw.TextStyle(
                             fontSize: 7,
-                            color: borderColor,
+                            color: _borderColor,
                           ),
                         ),
                       ),
@@ -634,10 +714,10 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
               pw.SizedBox(height: 10),
 
               // ── BOT & MID table ──────────────────────────────────────────────
-              sectionLabel('Beginning of Term (BOT) & Mid-Term (MID) Results'),
+              _sectionLabel('Beginning of Term (BOT) & Mid-Term (MID) Results'),
               pw.SizedBox(height: 4),
               pw.Table(
-                border: pw.TableBorder.all(color: borderColor, width: 0.6),
+                border: pw.TableBorder.all(color: _borderColor, width: 0.6),
                 columnWidths: {
                   0: const pw.FlexColumnWidth(3.5),
                   1: const pw.FlexColumnWidth(1.5),
@@ -649,14 +729,14 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                 children: [
                   // Header row
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: headerBlue),
+                    decoration: const pw.BoxDecoration(color: _headerBlue),
                     children: [
-                      th('SUBJECT'),
-                      th('BOT'),
-                      th('AGG'),
-                      th('MID'),
-                      th('AGG'),
-                      th('TEACHER'),
+                      _th('SUBJECT'),
+                      _th('BOT'),
+                      _th('AGG'),
+                      _th('MID'),
+                      _th('AGG'),
+                      _th('TEACHER'),
                     ],
                   ),
                   // Data rows
@@ -665,15 +745,15 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                     final isAlt = i.isOdd;
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(
-                        color: isAlt ? rowAlt : PdfColors.white,
+                        color: isAlt ? _rowAlt : PdfColors.white,
                       ),
                       children: [
-                        td(row['subject'].toString()),
-                        tdCenter(row['scoreBOT'].toStringAsFixed(0)),
-                        tdGrade(row['botLabel'].toString()),
-                        tdCenter(row['scoreMT'].toStringAsFixed(0)),
-                        tdGrade(row['midLabel'].toString()),
-                        td(row['teacher'].toString()),
+                        _td(row['subject'].toString()),
+                        _tdCenter(row['scoreBOT'].toStringAsFixed(0)),
+                        _tdGrade(row['botLabel'].toString()),
+                        _tdCenter(row['scoreMT'].toStringAsFixed(0)),
+                        _tdGrade(row['midLabel'].toString()),
+                        _td(row['teacher'].toString()),
                       ],
                     );
                   }),
@@ -683,7 +763,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
               pw.SizedBox(height: 4),
               // BOT / MID totals bar
               pw.Container(
-                color: lightBlue,
+                color: _lightBlue,
                 padding: const pw.EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 5,
@@ -696,7 +776,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 9,
-                        color: headerBlue,
+                        color: _headerBlue,
                       ),
                     ),
                     pw.Text(
@@ -704,7 +784,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                       style: pw.TextStyle(
                         fontWeight: pw.FontWeight.bold,
                         fontSize: 9,
-                        color: headerBlue,
+                        color: _headerBlue,
                       ),
                     ),
                   ],
@@ -713,11 +793,11 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
 
               pw.SizedBox(height: 10),
 
-              // ── table─
-              sectionLabel('End of Term (EOT) Results'),
+              // ── EOT table ────────────────────────────────────────────────────
+              _sectionLabel('End of Term (EOT) Results'),
               pw.SizedBox(height: 4),
               pw.Table(
-                border: pw.TableBorder.all(color: borderColor, width: 0.6),
+                border: pw.TableBorder.all(color: _borderColor, width: 0.6),
                 columnWidths: {
                   0: const pw.FlexColumnWidth(3.5),
                   1: const pw.FlexColumnWidth(2),
@@ -726,12 +806,12 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                 },
                 children: [
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: headerBlue),
+                    decoration: const pw.BoxDecoration(color: _headerBlue),
                     children: [
-                      th('SUBJECT'),
-                      th('MARKS'),
-                      th('AGG'),
-                      th('TEACHER'),
+                      _th('SUBJECT'),
+                      _th('MARKS'),
+                      _th('AGG'),
+                      _th('TEACHER'),
                     ],
                   ),
                   ...List.generate(subjectRows.length, (i) {
@@ -739,13 +819,13 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                     final isAlt = i.isOdd;
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(
-                        color: isAlt ? rowAlt : PdfColors.white,
+                        color: isAlt ? _rowAlt : PdfColors.white,
                       ),
                       children: [
-                        td(row['subject'].toString()),
-                        tdCenter(row['scoreEOT'].toStringAsFixed(0)),
-                        tdGrade(row['eotLabel'].toString()),
-                        td(row['teacher'].toString()),
+                        _td(row['subject'].toString()),
+                        _tdCenter(row['scoreEOT'].toStringAsFixed(0)),
+                        _tdGrade(row['eotLabel'].toString()),
+                        _td(row['teacher'].toString()),
                       ],
                     );
                   }),
@@ -755,7 +835,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
               pw.SizedBox(height: 4),
               // EOT totals + division bar
               pw.Container(
-                decoration: const pw.BoxDecoration(color: headerBlue),
+                decoration: const pw.BoxDecoration(color: _headerBlue),
                 padding: const pw.EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 6,
@@ -777,7 +857,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                         vertical: 2,
                       ),
                       decoration: pw.BoxDecoration(
-                        color: accentGold,
+                        color: _accentGold,
                         borderRadius: const pw.BorderRadius.all(
                           pw.Radius.circular(3),
                         ),
@@ -787,7 +867,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                         style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold,
                           fontSize: 10,
-                          color: textDark,
+                          color: _textDark,
                         ),
                       ),
                     ),
@@ -805,7 +885,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                     child: pw.Container(
                       padding: const pw.EdgeInsets.all(8),
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: borderColor),
+                        border: pw.Border.all(color: _borderColor),
                         borderRadius: const pw.BorderRadius.all(
                           pw.Radius.circular(4),
                         ),
@@ -818,7 +898,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
                               fontSize: 8,
-                              color: headerBlue,
+                              color: _headerBlue,
                             ),
                           ),
                           pw.SizedBox(height: 4),
@@ -835,7 +915,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                     child: pw.Container(
                       padding: const pw.EdgeInsets.all(8),
                       decoration: pw.BoxDecoration(
-                        border: pw.Border.all(color: borderColor),
+                        border: pw.Border.all(color: _borderColor),
                         borderRadius: const pw.BorderRadius.all(
                           pw.Radius.circular(4),
                         ),
@@ -848,7 +928,7 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
                               fontSize: 8,
-                              color: headerBlue,
+                              color: _headerBlue,
                             ),
                           ),
                           pw.SizedBox(height: 4),
@@ -865,23 +945,140 @@ final List<Map<String, dynamic>> subjectRows = allSubjects.map((s) {
 
               pw.SizedBox(height: 12),
 
-              // Signatures
+              // ── Signatures ───────────────────────────────────────────────────
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  signatureBlock('Class Teacher'),
-                  signatureBlock('Head Teacher'),
+                  _signatureBlock('Class Teacher'),
+                  _signatureBlock('Head Teacher'),
                 ],
               ),
             ],
           );
-          
         },
       ),
     );
-     await Printing.layoutPdf(
-    onLayout: (format) async => pdf.save(),
-  );
   }
-  
+
+  // ─── Small layout helpers ─────────────────────────────────────────────────────
+
+  pw.Widget _infoRow(String label, String value) => pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 2),
+    child: pw.RichText(
+      text: pw.TextSpan(
+        children: [
+          pw.TextSpan(
+            text: '$label:  ',
+            style: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 8.5,
+              color: _headerBlue,
+            ),
+          ),
+          pw.TextSpan(
+            text: value,
+            style: const pw.TextStyle(fontSize: 8.5, color: _textDark),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  pw.Widget _sectionLabel(String text) => pw.Container(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: pw.BoxDecoration(
+      color: _lightBlue,
+      border: pw.Border(left: pw.BorderSide(color: _accentGold, width: 3)),
+    ),
+    child: pw.Text(
+      text,
+      style: pw.TextStyle(
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 8.5,
+        color: _headerBlue,
+      ),
+    ),
+  );
+
+  /// Table header cell
+  pw.Widget _th(String text) => pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+    child: pw.Text(
+      text,
+      style: pw.TextStyle(
+        fontWeight: pw.FontWeight.bold,
+        fontSize: 7.5,
+        color: PdfColors.white,
+      ),
+      textAlign: pw.TextAlign.center,
+    ),
+  );
+
+  /// Normal data cell (left-aligned)
+  pw.Widget _td(String text) => pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    child: pw.Text(
+      text,
+      style: const pw.TextStyle(fontSize: 7.5, color: _textDark),
+    ),
+  );
+
+  /// Centre-aligned data cell
+  pw.Widget _tdCenter(String text) => pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    child: pw.Text(
+      text,
+      style: const pw.TextStyle(fontSize: 7.5, color: _textDark),
+      textAlign: pw.TextAlign.center,
+    ),
+  );
+
+  /// Grade cell – colour-coded by grade letter
+  pw.Widget _tdGrade(String label) {
+    PdfColor bg;
+    if (label.startsWith('D')) {
+      bg = const PdfColor.fromInt(0xFFD4EDDA); // green tint
+    } else if (label.startsWith('C')) {
+      bg = const PdfColor.fromInt(0xFFFFF3CD); // amber tint
+    } else if (label.startsWith('P')) {
+      bg = const PdfColor.fromInt(0xFFFFE0B2); // orange tint
+    } else {
+      bg = const PdfColor.fromInt(0xFFFFCDD2); // red tint
+    }
+
+    return pw.Container(
+      color: bg,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: pw.Text(
+        label,
+        style: pw.TextStyle(
+          fontSize: 7.5,
+          fontWeight: pw.FontWeight.bold,
+          color: _textDark,
+        ),
+        textAlign: pw.TextAlign.center,
+      ),
+    );
+  }
+
+  pw.Widget _signatureBlock(String role) => pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.center,
+    children: [
+      pw.Text(
+        role,
+        style: pw.TextStyle(
+          fontWeight: pw.FontWeight.bold,
+          fontSize: 8.5,
+          color: _headerBlue,
+        ),
+      ),
+      pw.SizedBox(height: 24),
+      pw.Container(width: 140, height: 0.8, color: _borderColor),
+      pw.SizedBox(height: 3),
+      pw.Text(
+        'Signature',
+        style: const pw.TextStyle(fontSize: 7, color: _borderColor),
+      ),
+    ],
+  );
 }

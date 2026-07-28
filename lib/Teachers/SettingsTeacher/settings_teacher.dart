@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,21 +13,35 @@ class SettingsTeacher extends StatefulWidget {
   State<SettingsTeacher> createState() => _SettingsTeacherState();
 }
 
-class _SettingsTeacherState extends State<SettingsTeacher> {
+class _SettingsTeacherState extends State<SettingsTeacher> with SingleTickerProviderStateMixin {
   List<ClassesModel> classesList = [];
   List<ClassesModel> selectedClasses = [];
   String? selectedSchoolId;
+  bool _isSaving = false;
+  late AnimationController _animationController;
 
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _secondNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  // ---------------- LOAD DATA ----------------
-
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _animationController.forward();
     loadTeacherData();
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _secondNameController.dispose();
+    _phoneController.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> loadTeacherData() async {
@@ -62,8 +76,6 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
     });
   }
 
-  // ---------------- CLASSES ----------------
-
   Future<void> loadClassesFromSchool(String schoolId) async {
     setState(() {
       classesList = [
@@ -78,52 +90,94 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
     });
   }
 
-  // ---------------- SAVE ----------------
-
   Future<void> saveTeacherSettings() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final linkedClasses = selectedClasses.map((c) {
-      return {
-        "schoolId": selectedSchoolId,
-        "classModel": c.model,
-        "className": c.className,
-      };
-    }).toList();
+    setState(() => _isSaving = true);
 
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(user.uid)
-        .set({
-      'role': 'teacher',
-      'firstName': _firstNameController.text.trim(),
-      'secondName': _secondNameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'linkedClasses': linkedClasses,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      final linkedClasses = selectedClasses.map((c) {
+        return {
+          "schoolId": selectedSchoolId,
+          "classModel": c.model,
+          "className": c.className,
+        };
+      }).toList();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Settings saved successfully')),
-    );
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .set({
+        'role': 'teacher',
+        'firstName': _firstNameController.text.trim(),
+        'secondName': _secondNameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'linkedClasses': linkedClasses,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 12),
+              Text('✅ Settings saved successfully'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error, color: Colors.white, size: 20),
+              SizedBox(width: 12),
+              Text('❌ Failed to save settings'),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      setState(() => _isSaving = false);
+    }
   }
-
-  // ---------------- LOGOUT ----------------
 
   Future<void> logout(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Logout"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.logout, color: Colors.red, size: 28),
+            const SizedBox(width: 12),
+            const Text("Logout", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: const Text("Are you sure you want to logout?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text("Logout"),
           ),
         ],
@@ -144,10 +198,6 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
     }
 
     await FirebaseMessaging.instance.unsubscribeFromTopic("teachers");
-
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.clear();
-
     await FirebaseAuth.instance.signOut();
 
     Navigator.of(context).pushNamedAndRemoveUntil(
@@ -156,183 +206,521 @@ class _SettingsTeacherState extends State<SettingsTeacher> {
     );
   }
 
-  // ---------------- UI HELPERS ----------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: _buildAppBar(),
+      body: FadeTransition(
+        opacity: _animationController,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              _buildProfileSection(),
+              const SizedBox(height: 16),
+              _buildSchoolClassesSection(),
+              const SizedBox(height: 16),
+              _buildAccountSection(),
+              const SizedBox(height: 24),
+              _buildSaveButton(),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-  Widget section(String title, Widget child) {
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: mainColor,
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white24,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      title: const Text(
+        "Settings",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [mainColor, mainColor.withOpacity(0.8)],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection() {
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.white, mainColor.withOpacity(0.05)],
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: TextStyle(
-                  fontSize: normalFontSize + 2,
-                  fontWeight: FontWeight.bold,
-                )),
-            const SizedBox(height: 12),
-            child,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: mainColor.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: mainColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person_outline, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Profile Information",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildTextField(
+                    controller: _firstNameController,
+                    label: 'First Name',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _secondNameController,
+                    label: 'Second Name',
+                    icon: Icons.person_outline,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _phoneController,
+                    label: 'Phone Number',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ---------------- UI ----------------
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: mainColor, size: 20),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: mainColor,
-      appBar: AppBar(
-        backgroundColor: mainColor,
-         leading: InkWell(
-          child: Icon(Icons.arrow_back_outlined, color: Colors.white,),
-          onTap: () {
-            Navigator.pop(context);
+  Widget _buildSchoolClassesSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: mainColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.school_outlined, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  "School & Classes",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSchoolDropdown(),
+                const SizedBox(height: 16),
+                _buildClassesGrid(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchoolDropdown() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('Schools').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          return DropdownButtonFormField<String>(
+            value: selectedSchoolId,
+            decoration: InputDecoration(
+              labelText: "Select School",
+              prefixIcon: Icon(Icons.business_outlined, color: mainColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            items: snapshot.data!.docs.map((school) {
+              return DropdownMenuItem(
+                value: school.id,
+                child: Text(
+                  school['school_name'] ?? school.id,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  selectedSchoolId = val;
+                  selectedClasses.clear();
+                });
+                loadClassesFromSchool(val);
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildClassesGrid() {
+    if (classesList.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            "Select Classes",
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            childAspectRatio: 1.2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: classesList.length,
+          itemBuilder: (context, index) {
+            final classItem = classesList[index];
+            final isSelected = selectedClasses.contains(classItem);
+            
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  if (isSelected) {
+                    selectedClasses.remove(classItem);
+                  } else {
+                    selectedClasses.add(classItem);
+                  }
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: isSelected
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [mainColor, mainColor.withOpacity(0.8)],
+                        )
+                      : null,
+                  color: isSelected ? null : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? mainColor : Colors.grey[300]!,
+                    width: isSelected ? 0 : 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.class_rounded,
+                      color: isSelected ? Colors.white : Colors.grey[600],
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      classItem.className,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey[700],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
         ),
-        title: const Text("Settings", style: TextStyle(color: Colors.white),)),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // PROFILE
-            section(
-              "Profile",
-              Column(
+        if (selectedClasses.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: mainColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
                 children: [
-                  TextField(
-                    controller: _firstNameController,
-                    decoration:
-                        customDecorationParentForm(labelText: 'First Name'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _secondNameController,
-                    decoration:
-                        customDecorationParentForm(labelText: 'Second Name'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration:
-                        customDecorationParentForm(labelText: 'Phone Number'),
+                  Icon(Icons.info_outline, color: mainColor, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${selectedClasses.length} class${selectedClasses.length > 1 ? 'es' : ''} selected",
+                    style: TextStyle(
+                      color: mainColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
+          ),
+      ],
+    );
+  }
 
-            // SCHOOL & CLASSES
-            section(
-              "School & Classes",
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('Schools')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator();
-                      }
-
-                      return DropdownButtonFormField<String>(
-                        initialValue: selectedSchoolId,
-                        decoration: const InputDecoration(
-                          labelText: "School",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: snapshot.data!.docs.map((school) {
-                          return DropdownMenuItem(
-                            value: school.id,
-                            child: Text(school['schoolId']),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              selectedSchoolId = val;
-                              selectedClasses.clear();
-                            });
-                            loadClassesFromSchool(val);
-                          }
-                        },
-                      );
-                    },
+  Widget _buildAccountSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: mainColor,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 10),
-                  ...classesList.map((c) {
-                    return CheckboxListTile(
-                      title: Text(c.className),
-                      value: selectedClasses.contains(c),
-                      onChanged: (val) {
-                        setState(() {
-                          val == true
-                              ? selectedClasses.add(c)
-                              : selectedClasses.remove(c);
-                        });
-                      },
-                    );
-                  }),
-                ],
-              ),
-            ),
-
-            // ACCOUNT
-            section(
-              "Account",
-              Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.lock),
-                    title: const Text("Reset Password"),
-                    onTap: () {
-                      FirebaseAuth.instance.sendPasswordResetEmail(
-                        email: FirebaseAuth
-                            .instance.currentUser!.email!,
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text("Password reset email sent")),
-                      );
-                    },
+                  child: const Icon(Icons.security_outlined, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  "Account Security",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  // const Divider(),
-                  // ListTile(
-                  //   leading:
-                  //       const Icon(Icons.logout, color: Colors.red),
-                  //   title: const Text(
-                  //     "Logout",
-                  //     style: TextStyle(color: Colors.red),
-                  //   ),
-                  //   onTap: () => logout(context),
-                  // ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.lock_reset, color: Colors.blue),
+            ),
+            title: const Text("Reset Password"),
+            subtitle: const Text("Send password reset email to your account"),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: () async {
+              await FirebaseAuth.instance.sendPasswordResetEmail(
+                email: FirebaseAuth.instance.currentUser!.email!,
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Row(
+                    children: [
+                      Icon(Icons.email, color: Colors.white, size: 20),
+                      SizedBox(width: 12),
+                      Text("Password reset email sent"),
+                    ],
+                  ),
+                  backgroundColor: Colors.blue,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.logout, color: Colors.red),
+            ),
+            title: const Text("Logout", style: TextStyle(color: Colors.red)),
+            subtitle: const Text("Sign out from your account"),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: () => logout(context),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
 
-            ElevatedButton(
-              onPressed: saveTeacherSettings,
-              child: const Padding(
-                padding: EdgeInsets.all(14),
-                child: Text("Save Changes"),
-              ),
-            ),
-          ],
+  Widget _buildSaveButton() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isSaving ? null : saveTeacherSettings,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: mainColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 2,
         ),
+        child: _isSaving
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save_rounded, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    "Save Changes",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
       ),
     );
   }
 }
-
-// ---------------- MODEL ----------------
 
 class ClassesModel {
   final String model;

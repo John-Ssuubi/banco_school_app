@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -63,46 +65,82 @@ class AboutSchool extends StatefulWidget {
   State<AboutSchool> createState() => _AboutSchoolState();
 }
 
-class _AboutSchoolState extends State<AboutSchool> {
-  /* ---------------- UPDATE ACCESS ---------------- */
+class _AboutSchoolState extends State<AboutSchool> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
-  Future<void> _updateAccess(String uid, bool value) async {
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(uid)
-        .update({'accessResults': value});
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          value ? "Results access granted" : "Results access locked",
-        ),
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
   }
 
-  /* ---------------- CONFIRM DELETE ---------------- */
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
-  Future<bool> _confirmDelete(String type) async {
+  Future<void> _updateAccess(String uid, bool value) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .update({'accessResults': value});
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value ? "✅ Results access granted" : "🔒 Results access locked",
+          ),
+          backgroundColor: value ? Colors.green : Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Failed to update access"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+    }
+  }
+
+  Future<bool> _confirmDelete(String type, String name) async {
     return await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
-              title: const Text("Confirm Delete"),
-              content: Text("Remove this $type?"),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+                  const SizedBox(width: 12),
+                  const Text("Confirm Delete"),
+                ],
+              ),
+              content: Text("Remove $type '$name'? This action cannot be undone."),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
                   child: const Text("Cancel"),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text(
-                    "Delete",
-                    style: TextStyle(color: Colors.red),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  child: const Text("Delete"),
                 ),
               ],
             );
@@ -111,75 +149,73 @@ class _AboutSchoolState extends State<AboutSchool> {
         false;
   }
 
-  /* ---------------- DELETE PARENT ---------------- */
-
-    Future<void> _deleteParent(LinkedParent parent) async {
-      try {
-        // await FirebaseFirestore.instance
-        //     .collection('Schools')
-        //     .doc(widget.schoolId)
-        //     .collection('LinkedParents')
-        //     .doc(parent.parentUid)
-        //     .delete();
-
-            await FirebaseFirestore.instance
-            .collection('Users').doc(parent.parentUid).update({
-              'approved': false,
-              // 'role': "Unassigned",
-            });
-
-        if (!mounted) return;
-
-        setState(() {
-          widget.linkedParents
-              .removeWhere((p) => p.parentUid == parent.parentUid);
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Parent removed")),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error")),
-        );
-      }
-    }
-
-  /* ---------------- DELETE STAFF ---------------- */
-
-  Future<void> _deleteStaff(StaffMember staff) async {
+  Future<void> _deleteParent(LinkedParent parent) async {
     try {
-      // await FirebaseFirestore.instance
-      //     .collection('Schools')
-      //     .doc(widget.schoolId)
-      //     .collection('StaffMembers')
-      //     .doc(staff.uid) // must exist
-      //     .delete();
-
-          await FirebaseFirestore.instance
-          .collection('Users').doc(staff.uid).update({
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(parent.parentUid)
+          .update({
             'approved': false,
-            // 'role': "Unassigned",
           });
 
       if (!mounted) return;
 
       setState(() {
-        widget.staffMembers
-            .removeWhere((s) => s.uid == staff.uid);
+        widget.linkedParents.removeWhere((p) => p.parentUid == parent.parentUid);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Staff removed")),
+        const SnackBar(
+          content: Text("🗑️ Parent removed successfully"),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error removing staff")),
+        const SnackBar(
+          content: Text("❌ Error removing parent"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+    } finally {
     }
   }
 
-  /* ---------------- PARENT OPTIONS ---------------- */
+  Future<void> _deleteStaff(StaffMember staff) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(staff.uid)
+          .update({
+            'approved': false,
+          });
+
+      if (!mounted) return;
+
+      setState(() {
+        widget.staffMembers.removeWhere((s) => s.uid == staff.uid);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("🗑️ Staff removed successfully"),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Error removing staff"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+    }
+  }
 
   void _showParentOptions(LinkedParent parent) {
     showModalBottomSheet(
@@ -187,68 +223,97 @@ class _AboutSchoolState extends State<AboutSchool> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: Colors.white,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "Parent Options",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Parent Options",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "${parent.firstName} ${parent.secondName}",
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 20),
-
+              const Divider(),
               ListTile(
-                leading: const Icon(Icons.lock_open, color: Colors.green),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.lock_open, color: Colors.green),
+                ),
                 title: const Text("Grant Results Access"),
                 onTap: () async {
                   Navigator.pop(context);
                   await _updateAccess(parent.parentUid, true);
                 },
               ),
-
               ListTile(
-                leading: const Icon(Icons.lock, color: Colors.red),
-                title: const Text("Lock Results"),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.lock, color: Colors.orange),
+                ),
+                title: const Text("Lock Results Access"),
                 onTap: () async {
                   Navigator.pop(context);
                   await _updateAccess(parent.parentUid, false);
                 },
               ),
-
               const Divider(),
-
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("Remove Parent"),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.red),
+                ),
+                title: const Text("Remove Parent", style: TextStyle(color: Colors.red)),
                 onTap: () async {
                   Navigator.pop(context);
-
-                  final ok = await _confirmDelete("parent");
-
+                  final ok = await _confirmDelete("parent", "${parent.firstName} ${parent.secondName}");
                   if (ok) {
                     await _deleteParent(parent);
                   }
                 },
               ),
-
-              const Divider(),
-
-              ListTile(
-                leading: const Icon(Icons.cancel),
-                title: const Text("Cancel"),
-                onTap: () => Navigator.pop(context),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
         );
       },
     );
   }
-
-  /* ---------------- STAFF OPTIONS ---------------- */
 
   void _showStaffOptions(StaffMember staff) {
     showModalBottomSheet(
@@ -256,40 +321,60 @@ class _AboutSchoolState extends State<AboutSchool> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: Colors.white,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                "Staff Options",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Staff Options",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "${staff.firstName} ${staff.secondName}",
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
               ),
-
-              const SizedBox(height: 20),
-
+              const Divider(),
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("Remove Staff"),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.person_remove, color: Colors.red),
+                ),
+                title: const Text("Remove Staff", style: TextStyle(color: Colors.red)),
                 onTap: () async {
                   Navigator.pop(context);
-
-                  final ok = await _confirmDelete("staff");
-
+                  final ok = await _confirmDelete("staff", "${staff.firstName} ${staff.secondName}");
                   if (ok) {
                     await _deleteStaff(staff);
                   }
                 },
               ),
-
-              const Divider(),
-
-              ListTile(
-                leading: const Icon(Icons.cancel),
-                title: const Text("Cancel"),
-                onTap: () => Navigator.pop(context),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
         );
@@ -297,169 +382,483 @@ class _AboutSchoolState extends State<AboutSchool> {
     );
   }
 
-  /* ---------------- UI ---------------- */
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: mainColor,
-
-      appBar: AppBar(
-        backgroundColor: mainColor,
-        title: const Text(
-          'About School',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-
-      body: ListView(
-        padding: const EdgeInsets.all(12),
+      backgroundColor: Colors.grey[50],
+      appBar: _buildAppBar(),
+      body: Column(
         children: [
-
-          _sectionTitle("School Information"),
-          _infoCard(
-            children: [
-              infoTile(Icons.school, "School Name", widget.schoolName),
-              infoTile(Icons.location_on, "Address", widget.address),
-              infoTile(Icons.markunread_mailbox, "P.O Box", widget.pobox),
-              infoTile(Icons.flag, "Motto", widget.moto),
-            ],
-          ),
-
-          _sectionTitle("Contact Information"),
-          _infoCard(
-            children: [
-              infoTile(Icons.phone, "Contact", widget.contact),
-              infoTile(Icons.email, "Email", widget.email),
-            ],
-          ),
-
-          _sectionTitle("Staff Members"),
-          _infoCard(
-            children: widget.staffMembers.isEmpty
-                ? const [
-                    Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text("No staff members"),
-                    ),
-                  ]
-                : widget.staffMembers.map(staffTile).toList(),
-          ),
-
-          _sectionTitle("Parents"),
-          _infoCard(
-            children: widget.linkedParents.isEmpty
-                ? const [
-                    Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text("No parents"),
-                    ),
-                  ]
-                : widget.linkedParents.map(parentsTile).toList(),
-          ),
-
-          _sectionTitle("Grading System"),
-          _infoCard(
-            children: [
-              gradeTile("D1", widget.d1Start, widget.d1End),
-              gradeTile("D2", widget.d2Start, widget.d2End),
-              gradeTile("C3", widget.c3Start, widget.c3End),
-              gradeTile("C4", widget.c4Start, widget.c4End),
-              gradeTile("C5", widget.c5Start, widget.c5End),
-              gradeTile("C6", widget.c6Start, widget.c6End),
-              gradeTile("P7", widget.p7Start, widget.p7End),
-              gradeTile("P8", widget.p8Start, widget.p8End),
-              gradeTile("F9", widget.f9Start, widget.f9End),
-            ],
-          ),
-
-          _sectionTitle("System Status"),
-          _infoCard(
-            children: [
-              infoTile(
-                Icons.verified,
-                "Subscription",
-                widget.subscription,
-                valueColor:
-                    widget.subscription == "Paid" ? Colors.green : Colors.red,
-              ),
-            ],
+          _buildHeaderCard(),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildSchoolInfoTab(),
+                _buildStaffTab(),
+                _buildParentsTab(),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  /* ---------------- COMPONENTS ---------------- */
-
-  Widget _sectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Text(
-        title,
-        style: const TextStyle(
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: mainColor,
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white24,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      title: const Text(
+        "School Information",
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 18,
           fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
+      ),
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [mainColor, mainColor.withOpacity(0.8)],
+          ),
         ),
       ),
     );
   }
 
-  Widget _infoCard({required List<Widget> children}) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(children: children),
+  Widget _buildHeaderCard() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [mainColor, mainColor.withOpacity(0.8)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: mainColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.school_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.schoolName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.moto,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.subscription == "Paid" ? Colors.green : Colors.red,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              widget.subscription,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget infoTile(
-    IconData icon,
-    String title,
-    String value, {
-    Color valueColor = Colors.black,
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: mainColor,
+        ),
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.grey[600],
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+        tabs: const [
+          Tab(icon: Icon(Icons.info_outline), text: "Info"),
+          Tab(icon: Icon(Icons.people_outline), text: "Staff"),
+          Tab(icon: Icon(Icons.family_restroom), text: "Parents"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchoolInfoTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildInfoSection(
+          title: "Contact Information",
+          icon: Icons.contact_phone,
+          children: [
+            _infoRow(Icons.location_on, "Address", widget.address),
+            _infoRow(Icons.markunread_mailbox, "P.O Box", widget.pobox),
+            _infoRow(Icons.phone, "Contact", widget.contact),
+            _infoRow(Icons.email, "Email", widget.email),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildInfoSection(
+          title: "Grading System",
+          icon: Icons.grade,
+          children: [
+            _gradeRow("D1", widget.d1Start, widget.d1End),
+            _gradeRow("D2", widget.d2Start, widget.d2End),
+            _gradeRow("C3", widget.c3Start, widget.c3End),
+            _gradeRow("C4", widget.c4Start, widget.c4End),
+            _gradeRow("C5", widget.c5Start, widget.c5End),
+            _gradeRow("C6", widget.c6Start, widget.c6End),
+            _gradeRow("P7", widget.p7Start, widget.p7End),
+            _gradeRow("P8", widget.p8Start, widget.p8End),
+            _gradeRow("F9", widget.f9Start, widget.f9End),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStaffTab() {
+    if (widget.staffMembers.isEmpty) {
+      return _buildEmptyState("No Staff Members", "No staff members have been added yet", Icons.people_outline);
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.staffMembers.length,
+      itemBuilder: (context, index) {
+        return _buildStaffCard(widget.staffMembers[index]);
+      },
+    );
+  }
+
+  Widget _buildParentsTab() {
+    if (widget.linkedParents.isEmpty) {
+      return _buildEmptyState("No Parents", "No parents are linked to this school", Icons.family_restroom);
+    }
+    
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.linkedParents.length,
+      itemBuilder: (context, index) {
+        return _buildParentCard(widget.linkedParents[index]);
+      },
+    );
+  }
+
+  Widget _buildInfoSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: mainColor),
-      title: Text(title,
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(
-        value.isEmpty ? "N/A" : value,
-        style: TextStyle(color: valueColor, fontSize: 16),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: mainColor),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: children),
+          ),
+        ],
       ),
     );
   }
 
-  Widget staffTile(StaffMember staff) {
-    return InkWell(
-      onTap: () => _showStaffOptions(staff),
-      child: Card(
-        elevation: 1,
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: mainColor,
-            child: Text(
-              staff.firstName.isNotEmpty ? staff.firstName[0] : "?",
-              style: const TextStyle(color: Colors.white),
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: mainColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value.isEmpty ? "N/A" : value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          title: Text(
-            "${staff.firstName} ${staff.secondName}",
-            style: const TextStyle(fontWeight: FontWeight.bold),
+        ],
+      ),
+    );
+  }
+
+  Widget _gradeRow(String grade, int start, int end) {
+    Color gradeColor;
+    if (grade == 'D1' || grade == 'D2') {
+      gradeColor = Colors.green;
+    } else if (grade == 'C3' || grade == 'C4' || grade == 'C5' || grade == 'C6') {
+      gradeColor = Colors.blue;
+    } else if (grade == 'P7' || grade == 'P8') {
+      gradeColor = Colors.orange;
+    } else {
+      gradeColor = Colors.red;
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [gradeColor, gradeColor.withOpacity(0.7)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                grade,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 12),
+          Expanded(
+            child: LinearProgressIndicator(
+              value: (end - start) / 100,
+              backgroundColor: Colors.grey[200],
+              color: gradeColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: gradeColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              "$start - $end",
+              style: TextStyle(
+                color: gradeColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStaffCard(StaffMember staff) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () => _showStaffOptions(staff),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             children: [
-              Text("Role: ${staff.role}"),
-              Text("Phone: ${staff.phone.isEmpty ? 'N/A' : staff.phone}"),
+              Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [mainColor, mainColor.withOpacity(0.7)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    staff.firstName.isNotEmpty ? staff.firstName[0].toUpperCase() : "?",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${staff.firstName} ${staff.secondName}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: mainColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        staff.role,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: mainColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (staff.phone.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, size: 12, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            staff.phone,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(Icons.more_vert, color: Colors.grey[400]),
             ],
           ),
         ),
@@ -467,30 +866,81 @@ class _AboutSchoolState extends State<AboutSchool> {
     );
   }
 
-  Widget parentsTile(LinkedParent parent) {
-    return InkWell(
-      onTap: () => _showParentOptions(parent),
-      child: Card(
-        elevation: 1,
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: mainColor,
-            child: Text(
-              parent.firstName.isNotEmpty ? parent.firstName[0] : "?",
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-          title: Text(
-            '${parent.firstName} ${parent.secondName}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildParentCard(LinkedParent parent) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () => _showParentOptions(parent),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             children: [
-              Text("Phone: ${parent.phone.isEmpty ? 'N/A' : parent.phone}"),
-              Text("Email: ${parent.email.isEmpty ? 'N/A' : parent.email}"),
+              Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.teal, Colors.teal.withOpacity(0.7)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    parent.firstName.isNotEmpty ? parent.firstName[0].toUpperCase() : "?",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${parent.firstName} ${parent.secondName}",
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (parent.phone.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(Icons.phone, size: 12, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            parent.phone,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    if (parent.email.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(Icons.email, size: 12, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            parent.email,
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey[400]),
             ],
           ),
         ),
@@ -498,13 +948,40 @@ class _AboutSchoolState extends State<AboutSchool> {
     );
   }
 
-  Widget gradeTile(String grade, int start, int end) {
-    return ListTile(
-      leading: const Icon(Icons.bar_chart, color: Colors.blue),
-      title: Text(grade,
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-      trailing: Text("$start - $end",
-          style: const TextStyle(fontSize: 16)),
+  Widget _buildEmptyState(String title, String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 50,
+              color: mainColor.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
     );
   }
 }

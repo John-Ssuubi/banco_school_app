@@ -1,9 +1,9 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:banco_mobile/Auth/auth_student.dart';
+import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/headteacher_assessment.dart';
 import 'package:banco_mobile/HeadTeacher/Results/headteacher_classes.dart';
-import 'package:banco_mobile/HeadTeacher/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/attendance.dart';
 import 'package:banco_mobile/HeadTeacher/headteacher_stat.dart';
 import 'package:banco_mobile/HeadTeacher/headteachernotificatios.dart';
@@ -33,641 +33,1108 @@ class HeadTeacherDashboard extends StatefulWidget {
   State<HeadTeacherDashboard> createState() => _HeadTeacherDashboardState();
 }
 
-class _HeadTeacherDashboardState extends State<HeadTeacherDashboard> {
+class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
+    with TickerProviderStateMixin {
   String? schoolId;
   List<Map<String, dynamic>>? schoolClasses = [];
+  bool isLoading = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isLargeScreen = false;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  final List<DashboardItem> menuItems = [
+    DashboardItem(
+      title: 'Results',
+      subtitle: 'View student grades',
+      icon: Icons.workspace_premium_rounded,
+      color: const Color(0xFF00897B),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF00897B), Color(0xFF00695C)],
+      ),
+    ),
+    DashboardItem(
+      title: 'Attendance',
+      subtitle: 'Track daily presence',
+      icon: Icons.how_to_reg_rounded,
+      color: const Color(0xFF1E88E5),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+      ),
+    ),
+    DashboardItem(
+      title: 'Notifications',
+      subtitle: 'Alerts & messages',
+      icon: Icons.notifications_active_rounded,
+      color: const Color(0xFFE53935),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFE53935), Color(0xFFC62828)],
+      ),
+    ),
+    DashboardItem(
+      title: 'Statistics',
+      subtitle: 'Performance insights',
+      icon: Icons.bar_chart_rounded,
+      color: const Color(0xFF8E24AA),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF8E24AA), Color(0xFF6A1B9A)],
+      ),
+    ),
+    DashboardItem(
+      title: 'Assessment',
+      subtitle: 'Evaluate & review',
+      icon: Icons.fact_check_rounded,
+      color: const Color(0xFFF57C00),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFF57C00), Color(0xFFE65100)],
+      ),
+    ),
+  ];
 
   Future<void> loadData() async {
+    setState(() => isLoading = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-
       final userDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
           .get();
-
       if (userDoc.exists) {
         final data = userDoc.data()!;
-        final classes = List<Map<String, dynamic>>.from(
-          data['linkedClasses'] ?? [],
-        );
+        final classes =
+            List<Map<String, dynamic>>.from(data['linkedClasses'] ?? []);
         setState(() {
           schoolClasses = classes;
-          // pick the first school's ID
-          if (classes.isNotEmpty) {
-            schoolId = classes.first['schoolId'];
-          }
+          if (classes.isNotEmpty) schoolId = classes.first['schoolId'];
         });
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error loading user data');
-      }
+      if (kDebugMode) print('Error loading user data: $e');
+    } finally {
+      setState(() => isLoading = false);
     }
   }
-
-  // Future<void> logout(BuildContext context) async {
-  //   await FirebaseAuth.instance.signOut();
-
-  //   // Navigate to AuthScreen (or your login screen)
-  //   Navigator.pushAndRemoveUntil(
-  //     context,
-  //     MaterialPageRoute(builder: (context) => const AuthStudent()),
-  //     (route) => false, // remove all previous routes
-  //   );
-  // }
 
   Future<void> logout(BuildContext context) async {
     final shouldLogout = await confirmLogout(context);
     if (!shouldLogout) return;
-
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      // ignore: unused_local_variable
-      final uid = user?.uid;
-
-      // 1️⃣ Remove FCM token from Firestore
-      // if (uid != null) {
-      //   await FirebaseFirestore.instance.collection("users").doc(uid).update({
-      //     "fcmToken": FieldValue.delete(),
-      //     "lastLogout": FieldValue.serverTimestamp(),
-      //   });
-      // }
-
-      // // 2️⃣ Unsubscribe from topics (important for school-wide notifications)
-      // await FirebaseMessaging.instance.unsubscribeFromTopic("all");
-      // await FirebaseMessaging.instance.unsubscribeFromTopic("teachers");
-      // await FirebaseMessaging.instance.unsubscribeFromTopic("parents");
-
-      // 3️⃣ Clear local storage (offline data)
-      // final prefs = await SharedPreferences.getInstance();
-      // await prefs.clear();
-
-      // 4️⃣ Firebase sign out
       await FirebaseAuth.instance.signOut();
-
-      // 5️⃣ Navigate to login & remove back stack
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthStudent()),
         (route) => false,
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Logout failed")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Logout failed. Please try again."),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   Future<bool> confirmLogout(BuildContext context) async {
     return await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Logout"),
-            content: const Text("Are you sure you want to logout?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
+          barrierColor: Colors.black54,
+          builder: (context) => Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10)),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Logout"),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.logout_rounded,
+                        color: Colors.red.shade600, size: 32),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Sign Out",
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A2E)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Are you sure you want to sign out of your account?",
+                    textAlign: TextAlign.center,
+                    style:
+                        TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                          child: Text("Cancel",
+                              style:
+                                  TextStyle(color: Colors.grey.shade700)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Sign Out",
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ) ??
         false;
   }
 
   @override
-  void initState()  {
+  void initState() {
     super.initState();
+    _fadeController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fadeAnimation =
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     AwesomeNotificationsEngine.scheduledNotificationAwesome();
-    // AwesomeNotificationsEngine.showAwesomeNotification();
-    // LocalNotifications.showNotification();
-    // ZonedNotifications.showZonedNotification();
-    loadData();
+    loadData().then((_) => _fadeController.forward());
   }
 
-  // int count = 0;
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkScreenSize();
+  }
+
+  void _checkScreenSize() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLarge = screenWidth >= 900;
+    if (_isLargeScreen != isLarge) setState(() => _isLargeScreen = isLarge);
+  }
+
   @override
   Widget build(BuildContext context) {
+    _checkScreenSize();
     return Scaffold(
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
-        backgroundColor: mainColor,
-        actions: [],
-        title: const Text(
-          "Head Teacher ",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        centerTitle: true,
-        elevation: 1,
-      ),
-
-      backgroundColor: Colors.grey[100],
-      drawer: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection('Users')
-            .doc(FirebaseAuth.instance.currentUser!.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const SizedBox();
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-
-          final firstName = data['firstName'] ?? '';
-          final secondName = data['secondName'] ?? '';
-          final role = data['role'] ?? '';
-          final schoolId = data['schoolId'] ?? '';
-
-          return Drawer(
-            backgroundColor: Colors.white,
-            // width: double.infinity - 20,
-            child: Column(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: _buildAppBar(),
+      drawer: _isLargeScreen ? null : _buildDrawer(),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (_isLargeScreen) {
+            return Row(
               children: [
-                UserAccountsDrawerHeader(
-                  decoration: BoxDecoration(color: mainColor),
-                  accountName: Text(
-                    "$firstName $secondName",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  accountEmail: Text(
-                    role.toUpperCase(), // e.g HEADTEACHER / TEACHER
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  currentAccountPicture: CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 45, color: mainColor),
-                  ),
-                ),
-
-                ListTile(
-                  leading: const Icon(Icons.home),
-                  title: const Text('Home'),
-                  onTap: () => Navigator.pop(
-                    context,
-                    // MaterialPageRoute(builder: (context) => const HomePage())
-                  ),
-                ),
-
-                ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('Settings'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SettingsTeacher()),
-                  ),
-                ),
-
-                InkWell(
-                  onTap: () {
-                    logout(context);
-                  },
-                  child: ListTile(
-                    leading: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(Icons.logout),
-                    ),
-                    title: const Text('Logout'),
-                  ),
-                ),
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('Schools')
-                      .doc(schoolId)
-                      .snapshots(),
-                  builder: (context, schoolSnapshot) {
-                    if (!schoolSnapshot.hasData) return const SizedBox();
-
-                    final data =
-                        schoolSnapshot.data!.data() as Map<String, dynamic>? ??
-                        {};
-
-                    final schoolName = data['school_name'] ?? '';
-                    final contact = data['contact'] ?? '';
-                    final address = data['address'] ?? '';
-                    final moto = data['moto'] ?? '';
-                    final pobox = data['pobox'] ?? '';
-                    final email = data['email'] ?? '';
-                    final subscription = data['subscription'] ?? '';
-
-                    final d1Start = data['D1Start'] ?? 0;
-                    final d1End = data['D1End'] ?? 0;
-                    final d2Start = data['D2Start'] ?? 0;
-                    final d2End = data['D2End'] ?? 0;
-                    final c3Start = data['c3Start'] ?? 0;
-                    final c3End = data['c3End'] ?? 0;
-                    final c4Start = data['c4Start'] ?? 0;
-                    final c4End = data['c4End'] ?? 0;
-                    final c5Start = data['c5Start'] ?? 0;
-                    final c5End = data['c5End'] ?? 0;
-                    final c6Start = data['c6Start'] ?? 0;
-                    final c6End = data['c6End'] ?? 0;
-                    final p7Start = data['p7Start'] ?? 0;
-                    final p7End = data['p7End'] ?? 0;
-                    final p8Start = data['p8Start'] ?? 0;
-                    final p8End = data['p8End'] ?? 0;
-                    final f9Start = data['f9Start'] ?? 0;
-                    final f9End = data['f9End'] ?? 0;
-
-                    // 🔥 Nested staff stream
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('Schools')
-                          .doc(schoolId)
-                          .collection('staffMembers')
-                          .snapshots(),
-                      builder: (context, staffSnapshot) {
-                        if (!staffSnapshot.hasData) return const SizedBox();
-
-                        final staffMembersList = staffSnapshot.data!.docs.map((
-                          doc,
-                        ) {
-                          final memberData = doc.data() as Map<String, dynamic>;
-
-                          return StaffMember(
-                            uid: memberData['teacherUid'],
-                            firstName: memberData['firstName'] ?? '',
-                            secondName: memberData['secondName'] ?? '',
-                            role: memberData['role'] ?? '',
-                            phone: memberData['phone'] ?? '',
-                          );
-                        }).toList();
-
-                        return StreamBuilder(
-                          stream: FirebaseFirestore.instance
-                              .collection('Schools')
-                              .doc(schoolId)
-                              .collection('linkedParents')
-                              .snapshots(),
-
-                          builder: (context, parentsSnp) {
-                            final linkedParentsList = parentsSnp.hasData
-                                ? parentsSnp.data!.docs.map((doc) {
-                                    final parentData = doc.data();
-
-                                    return LinkedParent(
-                                      phone: parentData['phone'] ?? '',
-                                      email: parentData['email'] ?? '',
-                                      firstName: parentData['firstName'] ?? '',
-                                      secondName:
-                                          parentData['secondName'] ?? '',
-                                      fcmToken: parentData['fcmToken'] ?? '',
-                                      parentUid: parentData['parentUid'] ?? '',
-                                    );
-                                  }).toList()
-                                : <LinkedParent>[];
-                            return ListTile(
-                              leading: const Icon(
-                                Icons.info,
-                                color: Colors.black,
-                              ),
-                              title: const Text(
-                                'About School',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AboutSchool(
-                                    schoolName: schoolName,
-                                    pobox: pobox,
-                                    address: address,
-                                    moto: moto,
-                                    contact: contact,
-                                    email: email,
-                                    subscription: subscription,
-                                    d1Start: d1Start,
-                                    d1End: d1End,
-                                    d2Start: d2Start,
-                                    d2End: d2End,
-                                    c3Start: c3Start,
-                                    c3End: c3End,
-                                    c4Start: c4Start,
-                                    c4End: c4End,
-                                    c5Start: c5Start,
-                                    c5End: c5End,
-                                    c6Start: c6Start,
-                                    c6End: c6End,
-                                    p7Start: p7Start,
-                                    p7End: p7End,
-                                    p8Start: p8Start,
-                                    p8End: p8End,
-                                    f9Start: f9Start,
-                                    f9End: f9End,
-                                    staffMembers: staffMembersList,
-                                    linkedParents: linkedParentsList,
-                                    schoolId: schoolId,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
+                SizedBox(width: 300, child: _buildDrawer()),
+                Expanded(
+                  child: isLoading
+                      ? _buildLoadingState()
+                      : FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: _buildDashboardContent()),
                 ),
               ],
+            );
+          }
+          return isLoading
+              ? _buildLoadingState()
+              : FadeTransition(
+                  opacity: _fadeAnimation, child: _buildDashboardContent());
+        },
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [mainColor, Color.lerp(mainColor, Colors.black, 0.2)!],
+          ),
+        ),
+      ),
+      leading: _isLargeScreen
+          ? null
+          : Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
             ),
+      title: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Users')
+            .doc(FirebaseAuth.instance.currentUser?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          final name = snapshot.hasData && snapshot.data!.exists
+              ? '${snapshot.data!['firstName'] ?? ''}'
+              : 'Head Teacher';
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Dashboard",
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontSize: 20,
+                    letterSpacing: 0.3),
+              ),
+              Text(
+                "Welcome back, $name",
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w400),
+              ),
+            ],
           );
         },
       ),
-      body: Container(
-        color: Colors.white60,
-        child: Center(
-          child: GridView(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+      centerTitle: false,
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white.withOpacity(0.15),
+                child: const Icon(Icons.person_rounded,
+                    color: Colors.white, size: 22),
+              ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDrawer() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Users')
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox();
+        }
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final firstName = data['firstName'] ?? '';
+        final secondName = data['secondName'] ?? '';
+        final role = data['role'] ?? '';
+        final userSchoolId = data['schoolId'] ?? '';
+
+        return Drawer(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          width: _isLargeScreen ? 300 : null,
+          child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-
-                child: GridTile(
-                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
-                  child: InkWell(
-                    child: Container(
-                      width: 75,
-                      height: 75,
-                      decoration: BoxDecoration(
-                        color: mainColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.class_, size: 40, color: Colors.white),
-                          SizedBox(height: 5),
-                          Text(
-                            'Results',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ],
-                      ),
+              _buildDrawerHeader(firstName, secondName, role),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  children: [
+                    _buildDrawerSection("NAVIGATION"),
+                    _buildDrawerItem(
+                      icon: Icons.dashboard_rounded,
+                      title: 'Dashboard',
+                      isActive: true,
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                      },
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HeadteacherClasses(
-                            classes: widget.classes,
-                            approve: widget.approve,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                    _buildDrawerItem(
+                      icon: Icons.tune_rounded,
+                      title: 'Settings',
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => SettingsTeacher()));
+                      },
+                    ),
+                    _buildAboutSchoolItem(userSchoolId, context),
+                    const SizedBox(height: 8),
+                    Divider(color: Colors.grey.shade100, height: 1),
+                    const SizedBox(height: 8),
+                    _buildDrawerSection("ACCOUNT"),
+                    _buildDrawerItem(
+                      icon: Icons.logout_rounded,
+                      title: 'Sign Out',
+                      color: Colors.red.shade400,
+                      onTap: () => logout(context),
+                    ),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-
-                child: GridTile(
-                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
-                  child: InkWell(
-                    child: Container(
-                      width: 75,
-                      height: 75,
-                      decoration: BoxDecoration(
-                        color: mainColor,
-
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.check_circle,
-                            size: 40,
-                            color: Colors.white,
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Attendance',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ],
-                      ),
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Icon(Icons.shield_rounded,
+                        size: 14, color: Colors.grey.shade400),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Banco Mobile v1.0.0',
+                      style: TextStyle(
+                          color: Colors.grey.shade400, fontSize: 11),
                     ),
-                    onTap: () {
-                      final today = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(DateTime.now());
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AttendanceScreen(
-                            schoolId: widget.schoolId, // from your loaded data
-                            today: today, // or pass today's date dynamically
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-                child: GridTile(
-                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
-                  child: InkWell(
-                    child: Container(
-                      width: 75,
-                      height: 75,
-                      decoration: BoxDecoration(
-                        color: mainColor,
+  Widget _buildDrawerHeader(
+      String firstName, String secondName, String role) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [mainColor, Color.lerp(mainColor, Colors.black, 0.25)!],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4))
+              ],
+            ),
+            child: const CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.person_rounded, color: Colors.white, size: 30),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "$firstName $secondName",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    role.toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                        borderRadius: BorderRadius.circular(8),
+  Widget _buildDrawerSection(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade400,
+            letterSpacing: 1.2),
+      ),
+    );
+  }
+
+  Widget _buildAboutSchoolItem(String userSchoolId, BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(userSchoolId)
+          .snapshots(),
+      builder: (context, schoolSnapshot) {
+        if (!schoolSnapshot.hasData) return const SizedBox();
+        final data =
+            schoolSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('Schools')
+              .doc(userSchoolId)
+              .collection('staffMembers')
+              .snapshots(),
+          builder: (context, staffSnapshot) {
+            if (!staffSnapshot.hasData) return const SizedBox();
+            final staffMembersList = staffSnapshot.data!.docs.map((doc) {
+              final m = doc.data() as Map<String, dynamic>;
+              return StaffMember(
+                uid: m['teacherUid'],
+                firstName: m['firstName'] ?? '',
+                secondName: m['secondName'] ?? '',
+                role: m['role'] ?? '',
+                phone: m['phone'] ?? '',
+              );
+            }).toList();
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Schools')
+                  .doc(userSchoolId)
+                  .collection('linkedParents')
+                  .snapshots(),
+              builder: (context, parentsSnp) {
+                final linkedParentsList = parentsSnp.hasData
+                    ? parentsSnp.data!.docs.map((doc) {
+                        final p = doc.data() as Map<String, dynamic>;
+                        return LinkedParent(
+                          phone: p['phone'] ?? '',
+                          email: p['email'] ?? '',
+                          firstName: p['firstName'] ?? '',
+                          secondName: p['secondName'] ?? '',
+                          fcmToken: p['fcmToken'] ?? '',
+                          parentUid: p['parentUid'] ?? '',
+                        );
+                      }).toList()
+                    : <LinkedParent>[];
+
+                return _buildDrawerItem(
+                  icon: Icons.account_balance_rounded,
+                  title: 'About School',
+                  onTap: () {
+                    if (!_isLargeScreen) Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AboutSchool(
+                          schoolName: data['school_name'] ?? '',
+                          pobox: data['pobox'] ?? '',
+                          address: data['address'] ?? '',
+                          moto: data['moto'] ?? '',
+                          contact: data['contact'] ?? '',
+                          email: data['email'] ?? '',
+                          subscription: data['subscription'] ?? '',
+                          d1Start: data['D1Start'] ?? 0,
+                          d1End: data['D1End'] ?? 0,
+                          d2Start: data['D2Start'] ?? 0,
+                          d2End: data['D2End'] ?? 0,
+                          c3Start: data['c3Start'] ?? 0,
+                          c3End: data['c3End'] ?? 0,
+                          c4Start: data['c4Start'] ?? 0,
+                          c4End: data['c4End'] ?? 0,
+                          c5Start: data['c5Start'] ?? 0,
+                          c5End: data['c5End'] ?? 0,
+                          c6Start: data['c6Start'] ?? 0,
+                          c6End: data['c6End'] ?? 0,
+                          p7Start: data['p7Start'] ?? 0,
+                          p7End: data['p7End'] ?? 0,
+                          p8Start: data['p8Start'] ?? 0,
+                          p8End: data['p8End'] ?? 0,
+                          f9Start: data['f9Start'] ?? 0,
+                          f9End: data['f9End'] ?? 0,
+                          staffMembers: staffMembersList,
+                          linkedParents: linkedParentsList,
+                          schoolId: userSchoolId,
+                        ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? color,
+    bool isActive = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: isActive ? mainColor.withOpacity(0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isActive
+                ? mainColor.withOpacity(0.12)
+                : (color ?? Colors.grey.shade700).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon,
+              color: isActive
+                  ? mainColor
+                  : (color ?? Colors.grey.shade600),
+              size: 20),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isActive ? mainColor : (color ?? const Color(0xFF2D3748)),
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        trailing: isActive
+            ? Container(
+                width: 4,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: mainColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              )
+            : null,
+        onTap: onTap,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        dense: true,
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent() {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('Schools')
+                .doc(schoolId)
+                .snapshots(),
+            builder: (context, schoolSnapshot) {
+              if (!schoolSnapshot.hasData) return const SizedBox(height: 16);
+              final data =
+                  schoolSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+              return _buildHeroHeader(
+                schoolName: data['school_name'] ?? '',
+                schoolMoto: data['moto'] ?? '',
+              );
+            },
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          sliver: SliverToBoxAdapter(
+            child: Text(
+              "Quick Actions",
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1A202C)),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          sliver: SliverGrid(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) =>
+                  _buildDashboardCard(menuItems[index], index),
+              childCount: menuItems.length,
+            ),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _isLargeScreen ? 3 : 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              childAspectRatio: 0.88,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroHeader({
+    required String schoolName,
+    required String schoolMoto,
+  }) {
+    final now = DateTime.now();
+    final greeting = now.hour < 12
+        ? "Good Morning"
+        : now.hour < 17
+            ? "Good Afternoon"
+            : "Good Evening";
+    final dateStr = DateFormat('EEEE, MMMM d').format(now);
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [mainColor, Color.lerp(mainColor, const Color(0xFF000033), 0.3)!],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+              color: mainColor.withOpacity(0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            bottom: -40,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
                         children: [
-                          StreamBuilder(
-                            stream: FirebaseFirestore.instance
-                                .collection('Schools')
-                                .doc(
-                                  schoolId ?? 'defaultSchoolId',
-                                ) // replace with dynamic schoolId if needed
-                                .collection('notifications')
-                                // .where('status', isEqualTo: 'pending')
-                                .snapshots(),
-                            builder: (context, asyncSnapshot) {
-                              int count = asyncSnapshot.hasData
-                                  ? asyncSnapshot.data!.docs.length
-                                  : 0;
-                              return Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4.0),
-                                    child: Icon(
-                                      Icons.notifications,
-                                      size: 40,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  if (count != 0)
-                                    Positioned(
-                                      right: 0,
-                                      top: -2,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 20,
-                                          minHeight: 20,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            count > 99 ? '99+' : '$count',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
-
-                          SizedBox(height: 5),
+                          const Icon(Icons.wb_sunny_rounded,
+                              color: Colors.amber, size: 14),
+                          const SizedBox(width: 5),
                           Text(
-                            'Notifications',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
+                            dateStr,
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
                     ),
-                    onTap: () async {
-                      //                 final notificationRef = FirebaseFirestore.instance
-                      //     .collection('Users')
-                      //     .doc('63sCeiPa0nXvqSHeQnyb1f7PN272')
-                      //     .collection('inbox')
-                      //     .doc();
-
-                      //               await notificationRef.set({
-                      //   'title': 'Attendance',
-                      //   'body': 'Gitta Isaac has arrived at school',
-                      //   'timestamp': FieldValue.serverTimestamp(),
-                      //   'studentId': 'P4-958979',
-                      //   'studentName': 'Gitta Isaac',
-                      //   'schoolFrom': 'Banco Primary Schools',
-                      //   'status': 'pending',
-                      //   'fcmToken': 'dwB_KPpJSle7ZSYrP5ALEF:APA91bEIfnt4Y8bDQqheLLaCymy3ZAbJZ1ZTR2qxztOV67Eict-PrUdyfJBhF8MS6Ko2Z7anXagw5pfVzVMLwPWXObWnh7PZtswKU2UCw5NKb5ngfHFXSWw',
-                      //   'type': 'Attendance',
-                      // });
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              HeadTeacherTabs(schoolId: schoolId!),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  greeting,
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  schoolName.isNotEmpty ? schoolName : 'Your School',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (schoolMoto.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '"$schoolMoto"',
+                    style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                        color: Colors.white.withOpacity(0.2), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF69F0AE),
+                          shape: BoxShape.circle,
                         ),
-                      );
-                    },
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "System Online",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(DashboardItem item, int index) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 80)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: child,
+        ),
+      ),
+      child: GestureDetector(
+        onTap: () => _navigateToMenuItem(item),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: item.gradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: item.color.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6)),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -15,
+                bottom: -15,
+                child: Icon(item.icon,
+                    size: 90, color: Colors.white.withOpacity(0.08)),
+              ),
+              Positioned(
+                left: -10,
+                top: -10,
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.05),
                   ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(8.0),
-
-                child: GridTile(
-                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
-                  child: InkWell(
-                    child: Container(
-                      width: 75,
-                      height: 75,
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: mainColor,
-
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.bar_chart, size: 40, color: Colors.white),
-                          SizedBox(height: 5),
-                          Text(
-                            'Statistics',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ],
-                      ),
+                      child: Icon(item.icon, size: 26, color: Colors.white),
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HeadteacherStat(
-                            classes: widget.classes,
-                            approve: widget.approve,
-                            schoolId: widget.schoolId,
-                          ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.2),
                         ),
-                      );
-                    },
-                  ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.subtitle,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.75)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-
-                child: GridTile(
-                  // header: Text('Classes Assigned', style: TextStyle(fontWeight: FontWeight.bold),),
-                  child: InkWell(
-                    child: Container(
-                      width: 75,
-                      height: 75,
-                      decoration: BoxDecoration(
-                        color: mainColor,
-
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.assignment, size: 40, color: Colors.white),
-                          SizedBox(height: 5),
-                          Text(
-                            'Assessment',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HeadteacherAssessment(
-                            classes: widget.classes,
-                            approve: widget.approve,
-                            // schoolId: widget.schoolId,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+              if (item.title == 'Notifications') _buildNotificationBadge(),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildNotificationBadge() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(schoolId ?? 'defaultSchoolId')
+          .collection('notifications')
+          .snapshots(),
+      builder: (context, snapshot) {
+        int count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+        if (count == 0) return const SizedBox.shrink();
+        return Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2))
+              ],
+            ),
+            child: Text(
+              count > 99 ? '99+' : '$count',
+              style: TextStyle(
+                  color: Colors.red.shade600,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      color: const Color(0xFFF5F7FA),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: mainColor.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8))
+                ],
+              ),
+              child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(mainColor),
+                  strokeWidth: 3),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Loading dashboard...',
+              style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToMenuItem(DashboardItem item) {
+    switch (item.title) {
+      case 'Results':
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => HeadteacherClasses(
+                    classes: widget.classes, approve: widget.approve)));
+        break;
+      case 'Attendance':
+        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => AttendanceScreen(
+                    schoolId: widget.schoolId, today: today)));
+        break;
+      case 'Notifications':
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    HeadTeacherTabs(schoolId: schoolId!)));
+        break;
+      case 'Statistics':
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => HeadteacherStat(
+                    classes: widget.classes,
+                    approve: widget.approve,
+                    schoolId: widget.schoolId)));
+        break;
+      case 'Assessment':
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => HeadteacherAssessment(
+                    classes: widget.classes, approve: widget.approve)));
+        break;
+    }
+  }
+}
+
+class DashboardItem {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final LinearGradient gradient;
+
+  DashboardItem({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.gradient,
+  });
 }
