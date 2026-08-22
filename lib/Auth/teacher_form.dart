@@ -8,7 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class TeacherForm extends StatefulWidget {
-  const TeacherForm({super.key});
+  final String? selectedSchoolId;
+  const TeacherForm({super.key, this.selectedSchoolId});
 
   @override
   State<TeacherForm> createState() => TeacherFormState();
@@ -17,72 +18,117 @@ class TeacherForm extends StatefulWidget {
 class TeacherFormState extends State<TeacherForm> {
   List<ClassesModel> classesList = [];
   List<ClassesModel> selectedClasses = [];
-  String? selectedSchoolId;
 
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _secondNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    // Load classes when the widget is initialized
+    if (widget.selectedSchoolId != null) {
+      loadClassesFromSchool(widget.selectedSchoolId!);
+    }
+  }
+
   // Save teacher with linked classes
   Future<void> linkTeacherToClasses() async {
+    if (widget.selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No school selected. Please go back and try again.')),
+      );
+      return;
+    }
+
+    if (selectedClasses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one class.')),
+      );
+      return;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login again.')),
+      );
+      return;
+    }
+
     final firestore = FirebaseFirestore.instance;
 
     final linkedClasses = selectedClasses.map((classObj) {
       return {
-        "schoolId": selectedSchoolId,
+        "schoolId": widget.selectedSchoolId,
         "classModel": classObj.model,
         "className": classObj.className,
       };
     }).toList();
 
-    await firestore.collection('Users').doc(user!.uid).set({
-      'schoolId': selectedSchoolId,
-      'role': 'teacher',
-      'firstName': _firstNameController.text.trim(),
-      'secondName': _secondNameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'linkedClasses': FieldValue.arrayUnion(linkedClasses),
-      'approved': 'false', // false true pending
-      'createdAt': FieldValue.serverTimestamp(),
-      'email': user.email,
-    }, SetOptions(merge: true));
+    try {
+      await firestore.collection('Users').doc(user.uid).set({
+        'schoolId': widget.selectedSchoolId,
+        'role': 'teacher',
+        'firstName': _firstNameController.text.trim(),
+        'secondName': _secondNameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'linkedClasses': FieldValue.arrayUnion(linkedClasses),
+        'approved': 'false',
+        'createdAt': FieldValue.serverTimestamp(),
+        'email': user.email,
+      }, SetOptions(merge: true));
 
-      final schoolref = firestore.collection('Schools').doc(selectedSchoolId).collection('staffMembers').doc(user.uid);
-      await schoolref.set({          
-              'role': 'teacher',
-              'firstName': _firstNameController.text.trim(),
-              'secondName': _secondNameController.text.trim(),
-              'phone': _phoneController.text.trim(),
-              'email': user.email,
-              'teacherUid': user.uid,        
-    
-        }, SetOptions(merge: true));
+      final schoolref = firestore
+          .collection('Schools')
+          .doc(widget.selectedSchoolId)
+          .collection('staffMembers')
+          .doc(user.uid);
+          
+      await schoolref.set({
+        'role': 'teacher',
+        'firstName': _firstNameController.text.trim(),
+        'secondName': _secondNameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'email': user.email,
+        'teacherUid': user.uid,
+      }, SetOptions(merge: true));
 
-    addNotification(
-      user.uid,
-      selectedSchoolId.toString(),
-      '${_firstNameController.text} ${_secondNameController.text} has registered as a Teacher to you school',
-      'Please approve their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')} ',
-    );
+      await addNotification(
+        user.uid,
+        widget.selectedSchoolId.toString(),
+        '${_firstNameController.text} ${_secondNameController.text} has registered as a Teacher to your school',
+        'Please approve their account. These are the classes they want to link to: ${selectedClasses.map((e) => e.className).join(', ')}',
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '✅ Linked ${linkedClasses.length} class(es) successfully!',
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Linked ${linkedClasses.length} class(es) successfully!',
+          ),
         ),
-      ),
-    );
+      );
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const MyApp()),
-      (route) => false, // remove all previous routes
-    );
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const MyApp()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   // Load all possible classes (static list)
-  Future<void> loadClassesFromSchool(String schoolId) async {
+  void loadClassesFromSchool(String schoolId) {
     final possibleCollections = [
       ClassesModel(model: 'studentModelP1', className: 'P1'),
       ClassesModel(model: 'studentModelP2', className: 'P2'),
@@ -100,12 +146,38 @@ class TeacherFormState extends State<TeacherForm> {
   }
 
   @override
+  void dispose() {
+    _firstNameController.dispose();
+    _secondNameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Check if school ID is provided
+    if (widget.selectedSchoolId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Banco Mobile")),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Text(
+              "No school selected. Please go back and try again.",
+              style: TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text("Banco Mobile")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // --- Name & Phone Fields ---
             TextFormField(
@@ -134,67 +206,78 @@ class TeacherFormState extends State<TeacherForm> {
             ),
 
             const SizedBox(height: 20),
-            Text(
-              "Choose the School",
-              style: TextStyle(
-                fontSize: normalFontSize,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
 
-            // --- School Dropdown ---
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('Schools')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Text('Error loading schools');
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Text('No schools found');
-                }
-
-                final schools = snapshot.data!.docs;
-
-                return DropdownButton<String>(
-                  isExpanded: true,
-                  hint: const Text("Select School"),
-                  value: selectedSchoolId,
-                  items: schools.map((school) {
-                    return DropdownMenuItem<String>(
-                      value: school.id,
-                      child: Text(school['schoolId']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedSchoolId = value);
-                      loadClassesFromSchool(value);
-                    }
-                  },
-                );
-              },
-            ),
+            // --- School Information ---
+            _buildSchoolInfo(),
 
             const SizedBox(height: 20),
+
+            // --- Class Selection Header ---
+            Row(
+              children: [
+                Text(
+                  "Select Classes",
+                  style: TextStyle(
+                    fontSize: normalFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) {
+                        return AlertDialog(
+                          title: const Text("Class Selection"),
+                          content: const Text(
+                            "Select the classes you will be teaching. "
+                            "You can select multiple classes.",
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text("OK"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
 
             // --- Class List ---
             if (classesList.isNotEmpty)
               Container(
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue[100]!),
+                ),
                 constraints: const BoxConstraints(maxHeight: 450),
-                color: Colors.amber[50],
                 child: ListView.builder(
+                  shrinkWrap: true,
                   itemCount: classesList.length,
                   itemBuilder: (context, index) {
                     final classObj = classesList[index];
                     final isSelected = selectedClasses.contains(classObj);
                     return CheckboxListTile(
                       title: Text(classObj.className),
+                      subtitle: Text(
+                        'Model: ${classObj.model}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                       value: isSelected,
                       onChanged: (bool? selected) {
                         setState(() {
@@ -210,24 +293,116 @@ class TeacherFormState extends State<TeacherForm> {
                 ),
               )
             else
-              const Text('Select a school to view classes'),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Loading classes...',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ),
+
+            // --- Selected Classes Count ---
+            if (selectedClasses.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Selected: ${selectedClasses.length} class(es)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 20),
 
             // --- Done Button ---
             ElevatedButton(
-              onPressed:
-                  (selectedSchoolId != null && selectedClasses.isNotEmpty)
+              onPressed: (selectedClasses.isNotEmpty)
                   ? linkTeacherToClasses
                   : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text('Done', style: TextStyle(fontSize: normalFontSize)),
+                child: Text(
+                  'Done',
+                  style: TextStyle(
+                    fontSize: normalFontSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 25),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Widget to display the selected school information
+  Widget _buildSchoolInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[100]!),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.school, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('Schools')
+                  .doc(widget.selectedSchoolId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Text("Loading school...");
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return const Text("School not found");
+                }
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data['school_name'] ?? 'Unknown School',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (data['schoolId'] != null)
+                      Text(
+                        'ID: ${data['schoolId']}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -239,7 +414,6 @@ class ClassesModel {
 
   ClassesModel({required this.model, required this.className});
 
-  // ✅ Override equality to allow proper list comparison
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

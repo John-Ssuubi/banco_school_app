@@ -5,8 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class CreateAccountAdmin extends StatefulWidget {
-  const CreateAccountAdmin({super.key});
+class CreateAccountAdmin extends StatefulWidget { 
+  final String? selectedSchoolId;
+  const CreateAccountAdmin({super.key, this.selectedSchoolId});
+
 
   @override
   State<CreateAccountAdmin> createState() =>

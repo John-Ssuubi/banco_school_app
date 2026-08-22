@@ -79,29 +79,28 @@ class MyApp extends StatelessWidget {
           /// Not logged in
           if (!snapshot.hasData) {
             String? schoolId;
-    try {
-      final uri = Uri.parse(html.window.location.href);
-      final rawSchoolId = uri.queryParameters['schoolId'];
-      
-      if (rawSchoolId != null && rawSchoolId.isNotEmpty) {
-        // Decode the URL-encoded school ID
-        schoolId = Uri.decodeComponent(rawSchoolId);
-        if (kDebugMode) {
-          print('Received school ID: $schoolId');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error parsing school ID: $e');
-      }
-    }
-    
-    return LandingPage(
-      schoolId: schoolId,
-      fromApplyButton: schoolId != null,
-    );
-  }
-          
+            try {
+              final uri = Uri.parse(html.window.location.href);
+              final rawSchoolId = uri.queryParameters['schoolId'];
+
+              if (rawSchoolId != null && rawSchoolId.isNotEmpty) {
+                // Decode the URL-encoded school ID
+                schoolId = Uri.decodeComponent(rawSchoolId);
+                if (kDebugMode) {
+                  print('Received school ID: $schoolId');
+                }
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('Error parsing school ID: $e');
+              }
+            }
+
+            return LandingPage(
+              schoolId: schoolId,
+              fromApplyButton: schoolId != null,
+            );
+          }
 
           /// Logged in — check role
           return FutureBuilder<DocumentSnapshot>(

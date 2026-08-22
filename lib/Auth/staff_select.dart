@@ -1,11 +1,14 @@
 import 'package:banco_mobile/Auth/create_account_admin.dart';
 import 'package:banco_mobile/Auth/create_account_headteacher.dart';
 import 'package:banco_mobile/Auth/create_account_teacher.dart';
-import 'package:banco_mobile/Auth/security_create_account.dart';
+// import 'package:banco_mobile/Auth/security_create_account.dart';
 import 'package:flutter/material.dart';
 
 class StaffSelect extends StatefulWidget {
-  const StaffSelect({super.key});
+  
+  final String? selectedSchoolId;
+  const StaffSelect({super.key, this.selectedSchoolId});
+
 
   @override
   State<StaffSelect> createState() => _StaffSelectState();
@@ -102,32 +105,32 @@ class _StaffSelectState extends State<StaffSelect> {
               );
             },
           ),
-          InkWell(
-            child: ListTile(
-              leading: CircleAvatar(
-                // backgroundColor: ,
-                child: Text(
-                  'S',
-                  style: TextStyle(
-                    // color: theme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              title: Text(
-                'Security',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text("Attendance Tracking"),
-              trailing: const Icon(Icons.chevron_right_rounded),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SecurityCreateAccount()),
-              );
-            },
-          ),
+          // InkWell(
+          //   child: ListTile(
+          //     leading: CircleAvatar(
+          //       // backgroundColor: ,
+          //       child: Text(
+          //         'S',
+          //         style: TextStyle(
+          //           // color: theme.primaryColor,
+          //           fontWeight: FontWeight.bold,
+          //         ),
+          //       ),
+          //     ),
+          //     title: Text(
+          //       'Security',
+          //       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          //     ),
+          //     subtitle: const Text("Attendance Tracking"),
+          //     trailing: const Icon(Icons.chevron_right_rounded),
+          //   ),
+          //   onTap: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(builder: (context) => SecurityCreateAccount()),
+          //     );
+          //   },
+          // ),
         ],
       ),
     );

@@ -7,8 +7,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class AdminForm extends StatefulWidget {
-  const AdminForm({super.key});
+class AdminForm extends StatefulWidget { 
+  final String? selectedSchoolId;
+  const AdminForm({super.key, this.selectedSchoolId});
 
   @override
   State<AdminForm> createState() => _AdminFormState();
@@ -21,10 +22,9 @@ class _AdminFormState extends State<AdminForm> {
   final TextEditingController _secondNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  String? selectedSchoolId;
   bool isSaving = false;
 
-  /// Static list of ALL classes for Head Teacher
+  /// Static list of ALL classes for Admin
   List<Map<String, dynamic>> _buildLinkedClasses(String schoolId) {
     return [
       {'schoolId': schoolId, 'classModel': 'studentModelP1', 'className': 'P1'},
@@ -37,32 +37,41 @@ class _AdminFormState extends State<AdminForm> {
     ];
   }
 
-Future<String?> showInfoDialog(BuildContext context, String title) {
-  return showDialog<String>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text(title),
-
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // return message
-            },
-            child: Text("OK"),
-          ),
-        ],
-      );
-    },
-  );
-}
+  Future<String?> showInfoDialog(BuildContext context, String title) {
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (selectedSchoolId == null) return;
+    if (widget.selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No school selected. Please go back and try again.')),
+      );
+      return;
+    }
 
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login again.')),
+      );
+      return;
+    }
 
     setState(() => isSaving = true);
 
@@ -74,48 +83,57 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
         'firstName': _firstNameController.text.trim(),
         'secondName': _secondNameController.text.trim(),
         'phone': _phoneController.text.trim(),
-        'schoolId': selectedSchoolId,
-        'linkedClasses': _buildLinkedClasses(selectedSchoolId!),
+        'schoolId': widget.selectedSchoolId,
+        'linkedClasses': _buildLinkedClasses(widget.selectedSchoolId!),
         'approved': 'false',
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
       await addNotification(
         user.uid,
-        selectedSchoolId!,
+        widget.selectedSchoolId!,
         '${_firstNameController.text} ${_secondNameController.text} registered as Admin',
         'Please approve their account. All classes were assigned automatically.',
       );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('✅ Admin registered successfully')),
       );
 
-      final schoolref = firestore.collection('Schools').doc(selectedSchoolId).collection('staffMembers').doc(user.uid);
+      final schoolref = firestore
+          .collection('Schools')
+          .doc(widget.selectedSchoolId)
+          .collection('staffMembers')
+          .doc(user.uid);
 
       await schoolref.set({
-        // 'staffMembers': {
-         
-            'role': 'admin',
-            'firstName': _firstNameController.text.trim(),
-            'secondName': _secondNameController.text.trim(),
-            'phone': _phoneController.text.trim(),
-            'email': user.email,
-            'teacherUid': user.uid, 
-          
-        // },
+        'role': 'admin',
+        'firstName': _firstNameController.text.trim(),
+        'secondName': _secondNameController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'email': user.email,
+        'teacherUid': user.uid,
       }, SetOptions(merge: true));
+
+      if (!mounted) return;
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MyApp()),
         (_) => false,
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     } finally {
-      setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
@@ -129,6 +147,23 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
 
   @override
   Widget build(BuildContext context) {
+    // Check if school ID is provided
+    if (widget.selectedSchoolId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Banco Mobile")),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Text(
+              "No school selected. Please go back and try again.",
+              style: TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text("Banco Mobile")),
       body: SingleChildScrollView(
@@ -174,13 +209,13 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
               Row(
                 children: [
                   Text(
-                    "Choose the School",
+                    "School Information",
                     style: TextStyle(
                       fontSize: normalFontSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-              const SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   InkWell(
                     onTap: () {
                       showInfoDialog(
@@ -197,54 +232,94 @@ Future<String?> showInfoDialog(BuildContext context, String title) {
                 ],
               ),
 
-              /// School Dropdown
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('Schools')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              const SizedBox(height: 10),
 
-                  return DropdownButtonFormField<String>(
-                    initialValue: selectedSchoolId,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'Select School',
-                    ),
-                    items: snapshot.data!.docs.map((doc) {
-                      return DropdownMenuItem<String>(
-                        value: doc.id,
-                        child: Text(doc['schoolId']),
-                      );
-                    }).toList(),
-                    onChanged: (value) =>
-                        setState(() => selectedSchoolId = value),
-                    validator: (v) =>
-                        v == null ? 'Please select a school' : null,
-                  );
-                },
-              ),
+              /// School Info Display (Read-only)
+              _buildSchoolInfo(),
 
               const SizedBox(height: 25),
 
               /// Submit Button
               ElevatedButton(
                 onPressed: isSaving ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Text(
                           'Done',
-                          style: TextStyle(fontSize: normalFontSize),
+                          style: TextStyle(
+                            fontSize: normalFontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Widget to display the selected school information
+  Widget _buildSchoolInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[100]!),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.school, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('Schools')
+                  .doc(widget.selectedSchoolId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Text("Loading school...");
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return const Text("School not found");
+                }
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data['school_name'] ?? 'Unknown School',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (data['schoolId'] != null)
+                      Text(
+                        'ID: ${data['schoolId']}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

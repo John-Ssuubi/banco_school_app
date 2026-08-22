@@ -22,6 +22,7 @@ class _ParentFormState extends State<ParentForm> {
 
   // State
   List<Map<String, dynamic>> _studentList = [];
+  List<Map<String, dynamic>> _filteredStudentList = [];
   final List<String> _selectedChildrenIds = [];
   
   bool _isSubmitting = false;
@@ -34,6 +35,7 @@ class _ParentFormState extends State<ParentForm> {
   final _relationController = TextEditingController();
   final _nationalityController = TextEditingController();
   final _addressController = TextEditingController();
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _ParentFormState extends State<ParentForm> {
     _relationController.dispose();
     _nationalityController.dispose();
     _addressController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -229,11 +232,29 @@ class _ParentFormState extends State<ParentForm> {
 
       setState(() {
         _studentList = allStudents;
+        _filteredStudentList = allStudents;
         _selectedChildrenIds.clear();
       });
     } finally {
       if (mounted) setState(() => _isLoadingStudents = false);
     }
+  }
+
+  /* ---------------- SEARCH FUNCTION ---------------- */
+
+  void _filterStudents(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredStudentList = _studentList;
+      } else {
+        _filteredStudentList = _studentList.where((student) {
+          final name = student['name'].toString().toLowerCase();
+          final classIn = student['classIn'].toString().toLowerCase();
+          final searchLower = query.toLowerCase();
+          return name.contains(searchLower) || classIn.contains(searchLower);
+        }).toList();
+      }
+    });
   }
 
   /* ---------------- UI ---------------- */
@@ -430,20 +451,71 @@ class _ParentFormState extends State<ParentForm> {
 
       child: Column(
         children: [
-          const ListTile(
-            title: Text(
-              "Select Your Child(ren)",
-              style: TextStyle(fontWeight: FontWeight.bold),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.group_add),
+                SizedBox(width: 12),
+                Text(
+                  "Select Your Child(ren)",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
             ),
-            leading: Icon(Icons.group_add),
           ),
+
+          // Search Bar
+          if (_studentList.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterStudents,
+                decoration: InputDecoration(
+                  hintText: 'Search by name or class...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.blue),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _filterStudents('');
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
 
           const Divider(height: 1),
 
-          if (_studentList.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Text("No students found"),
+          if (_filteredStudentList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 8),
+                  Text(
+                    _studentList.isEmpty ? "No students found" : "No matching students",
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
             )
           else
             ConstrainedBox(
@@ -451,10 +523,10 @@ class _ParentFormState extends State<ParentForm> {
 
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: _studentList.length,
+                itemCount: _filteredStudentList.length,
 
                 itemBuilder: (context, index) {
-                  final student = _studentList[index];
+                  final student = _filteredStudentList[index];
 
                   final isSelected = _selectedChildrenIds.contains(
                     student['id'],
@@ -463,9 +535,7 @@ class _ParentFormState extends State<ParentForm> {
                   return CheckboxListTile(
                     title: Text(student['name']),
                     subtitle: Text("Class: ${student['classIn']}"),
-
                     value: isSelected,
-
                     onChanged: (bool? selected) {
                       setState(() {
                         selected == true
@@ -475,6 +545,19 @@ class _ParentFormState extends State<ParentForm> {
                     },
                   );
                 },
+              ),
+            ),
+
+          // Show count of selected students
+          if (_selectedChildrenIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'Selected: ${_selectedChildrenIds.length} student(s)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blue[700],
+                ),
               ),
             ),
         ],
@@ -489,7 +572,6 @@ class _ParentFormState extends State<ParentForm> {
 
       child: ElevatedButton(
         onPressed: _isSubmitting ? null : _handleSubmission,
-
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blueAccent,
           shape: RoundedRectangleBorder(

@@ -6,7 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class CreateAccountTeacher extends StatefulWidget {
-  const CreateAccountTeacher({super.key});
+  final String? selectedSchoolId;
+  const CreateAccountTeacher({super.key, this.selectedSchoolId});
 
   @override
   State<CreateAccountTeacher> createState() => _CreateAccountTeacherState();
