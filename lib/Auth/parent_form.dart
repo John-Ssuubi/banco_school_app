@@ -9,7 +9,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ParentForm extends StatefulWidget {
-  const ParentForm({super.key});
+  final String? selectedSchoolId;
+
+  const ParentForm({super.key,required this.selectedSchoolId});
 
   @override
   State<ParentForm> createState() => _ParentFormState();
@@ -21,8 +23,7 @@ class _ParentFormState extends State<ParentForm> {
   // State
   List<Map<String, dynamic>> _studentList = [];
   final List<String> _selectedChildrenIds = [];
-  String? _selectedSchoolId;
-
+  
   bool _isSubmitting = false;
   bool _isLoadingStudents = false;
 
@@ -33,6 +34,15 @@ class _ParentFormState extends State<ParentForm> {
   final _relationController = TextEditingController();
   final _nationalityController = TextEditingController();
   final _addressController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load students when the widget is initialized
+    if (widget.selectedSchoolId != null) {
+      _loadStudents(widget.selectedSchoolId!);
+    }
+  }
 
   @override
   void dispose() {
@@ -71,7 +81,7 @@ class _ParentFormState extends State<ParentForm> {
   Future<void> _handleSubmission() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedChildrenIds.isEmpty || _selectedSchoolId == null) {
+    if (_selectedChildrenIds.isEmpty || widget.selectedSchoolId == null) {
       _showError("Please select at least one student");
       return;
     }
@@ -108,7 +118,7 @@ class _ParentFormState extends State<ParentForm> {
 
       final schoolDoc = await firestore
           .collection('Schools')
-          .doc(_selectedSchoolId)
+          .doc(widget.selectedSchoolId)
           .get();
 
       final schoolName = schoolDoc.data()?['school_name'] ?? 'Unknown School';
@@ -122,7 +132,7 @@ class _ParentFormState extends State<ParentForm> {
         );
 
         return {
-          'schoolId': _selectedSchoolId,
+          'schoolId': widget.selectedSchoolId,
           'studentId': student['id'],
           'studentName': student['name'],
           'schoolName': schoolName,
@@ -138,7 +148,7 @@ class _ParentFormState extends State<ParentForm> {
         'relation': _relationController.text.trim(),
         'address': _addressController.text.trim(),
         'nationality': _nationalityController.text.trim(),
-        'schoolId': _selectedSchoolId,
+        'schoolId': widget.selectedSchoolId,
         'phone': _phoneController.text.trim(),
 
         // IMPORTANT
@@ -156,14 +166,13 @@ class _ParentFormState extends State<ParentForm> {
         _firstNameController.text.trim(),
         _lastNameController.text.trim(),
         _phoneController.text.trim(),
-        
       );
 
       /* ---------- NOTIFY ADMIN ---------- */
 
       await addNotification(
         user.uid,
-        _selectedSchoolId!,
+        widget.selectedSchoolId!,
         '${_firstNameController.text.trim()} ${_lastNameController.text.trim()} has registered as a parent.',
         'Requested access for: '
             '${linkedChildren.map((e) => e['studentName']).join(', ')}',
@@ -231,6 +240,19 @@ class _ParentFormState extends State<ParentForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if school ID is provided
+    if (widget.selectedSchoolId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Parent Registration"),
+          centerTitle: true,
+        ),
+        body: const Center(
+          child: Text("No school selected. Please go back and try again."),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Parent Registration"),
@@ -260,12 +282,11 @@ class _ParentFormState extends State<ParentForm> {
 
               _buildSectionHeaderSchoolName("School & Student Link"),
 
-              _buildSchoolDropdown(),
+              _buildSchoolInfo(),
 
-              if (_selectedSchoolId != null) ...[
-                const SizedBox(height: 20),
-                _buildStudentList(),
-              ],
+              const SizedBox(height: 20),
+
+              _buildStudentList(),
 
               const SizedBox(height: 40),
 
@@ -332,6 +353,48 @@ class _ParentFormState extends State<ParentForm> {
     );
   }
 
+  Widget _buildSchoolInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[100]!),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.school, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('Schools')
+                  .doc(widget.selectedSchoolId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Text("Loading school...");
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  return const Text("School not found");
+                }
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                return Text(
+                  data['school_name'] ?? 'Unknown School',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
@@ -352,72 +415,6 @@ class _ParentFormState extends State<ParentForm> {
       ),
     );
   }
-
-  Widget _buildSchoolDropdown() {
-  return StreamBuilder<QuerySnapshot>(
-    stream: FirebaseFirestore.instance
-        .collection('Schools')
-        .snapshots(),
-
-    builder: (context, snapshot) {
-      if (snapshot.connectionState ==
-          ConnectionState.waiting) {
-        return const LinearProgressIndicator();
-      }
-
-      if (!snapshot.hasData ||
-          snapshot.data!.docs.isEmpty) {
-        return const Text("No schools found");
-      }
-
-      final docs = snapshot.data!.docs;
-
-      // Validate selected value
-      final validValue = docs.any(
-        (d) => d.id == _selectedSchoolId,
-      )
-          ? _selectedSchoolId
-          : null;
-
-      return DropdownButtonFormField<String>(
-        decoration: customDecorationParentForm(
-          labelText: "Select School",
-        ),
-
-        initialValue: validValue,
-
-        validator: (value) =>
-            value == null ? "Select a school" : null,
-
-        items: docs.map((doc) {
-          final name = doc.data() as Map<String, dynamic>;
-
-          return DropdownMenuItem<String>(
-            value: doc.id,
-            child: Text(
-              name['school_name'] ??
-                  doc.id, // fallback
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        }).toList(),
-
-        onChanged: (val) {
-          if (val == null) return;
-
-          setState(() {
-            _selectedSchoolId = val;
-            _studentList.clear();
-            _selectedChildrenIds.clear();
-          });
-
-          _loadStudents(val);
-        },
-      );
-    },
-  );
-}
-
 
   Widget _buildStudentList() {
     if (_isLoadingStudents) {

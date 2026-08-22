@@ -13,7 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthStudent extends StatefulWidget {
-  const AuthStudent({super.key});
+  final String? selectedSchoolId;
+  const AuthStudent({super.key, this.selectedSchoolId});
 
   @override
   State<AuthStudent> createState() => _AuthStudentState();
@@ -288,7 +289,7 @@ class _AuthStudentState extends State<AuthStudent>
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => CreateAccountParent(),
+                          builder: (_) => CreateAccountParent(selectedSchoolId: widget.selectedSchoolId,),
                         ),
                       );
                     },

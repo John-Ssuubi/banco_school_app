@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_linux
   awesome_notifications
   awesome_notifications_core
+  file_selector_linux
   flutter_timezone
   printing
 )

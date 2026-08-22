@@ -7,7 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class CreateAccountParent extends StatefulWidget {
-  const CreateAccountParent({super.key});
+  final String? selectedSchoolId;
+
+  const CreateAccountParent({super.key, required this.selectedSchoolId});
 
   @override
   State<CreateAccountParent> createState() => _CreateAccountParentState();
@@ -46,7 +48,10 @@ class _CreateAccountParentState extends State<CreateAccountParent> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ParentForm()),
+          MaterialPageRoute(builder: (context) => ParentForm(selectedSchoolId: widget.selectedSchoolId,
+
+            
+          )),
         );
       } catch (e) {
         // Handle errors here, e.g., show a snackbar

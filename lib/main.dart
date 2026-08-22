@@ -9,6 +9,7 @@ import 'package:banco_mobile/Teachers/teacher_home.dart';
 import 'package:banco_mobile/admin/admin_dashboard.dart';
 import 'package:banco_mobile/admin/inactive_sub.dart';
 import 'package:banco_mobile/firebase_options.dart';
+import 'package:banco_mobile/landingpage/landing_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -18,14 +19,12 @@ import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
+import 'dart:html' as html;
 
 /// Background handler
-Future<void> _firebaseMessagingBackgroundHandler(
-  RemoteMessage message,
-) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   if (kDebugMode) {
     print("Handling background message: ${message.notification?.title}");
@@ -41,14 +40,11 @@ Future<void> main() async {
   tz.setLocalLocation(tz.getLocation('Africa/Nairobi'));
 
   /// 3. Firebase initialization
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   /// 4. Notifications (NOT supported on Web)
   if (!kIsWeb) {
-    await AwesomeNotificationsEngine
-        .initializeAwesomeNotifications();
+    await AwesomeNotificationsEngine.initializeAwesomeNotifications();
 
     await initNotifications();
   }
@@ -66,8 +62,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Banco Mobile',
       theme: ThemeData(
-        colorScheme:
-            ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
 
       home: StreamBuilder<User?>(
@@ -75,19 +70,38 @@ class MyApp extends StatelessWidget {
 
         builder: (context, snapshot) {
           /// Loading state
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           }
 
           /// Not logged in
           if (!snapshot.hasData) {
-            return const AuthStudent();
-          }
+            String? schoolId;
+    try {
+      final uri = Uri.parse(html.window.location.href);
+      final rawSchoolId = uri.queryParameters['schoolId'];
+      
+      if (rawSchoolId != null && rawSchoolId.isNotEmpty) {
+        // Decode the URL-encoded school ID
+        schoolId = Uri.decodeComponent(rawSchoolId);
+        if (kDebugMode) {
+          print('Received school ID: $schoolId');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error parsing school ID: $e');
+      }
+    }
+    
+    return LandingPage(
+      schoolId: schoolId,
+      fromApplyButton: schoolId != null,
+    );
+  }
+          
 
           /// Logged in — check role
           return FutureBuilder<DocumentSnapshot>(
@@ -97,84 +111,55 @@ class MyApp extends StatelessWidget {
                 .get(),
 
             builder: (context, userSnapshot) {
-              if (userSnapshot.connectionState ==
-                  ConnectionState.waiting) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  body: Center(child: CircularProgressIndicator()),
                 );
               }
 
               if (userSnapshot.hasError) {
                 return const Scaffold(
-                  body: Center(
-                    child: Text('Error loading user'),
-                  ),
+                  body: Center(child: Text('Error loading user')),
                 );
               }
 
-              if (!userSnapshot.hasData ||
-                  !userSnapshot.data!.exists) {
+              if (!userSnapshot.hasData || !userSnapshot.data!.exists) {
                 return Scaffold(
-                  floatingActionButton:
-                      FloatingActionButton(
+                  floatingActionButton: FloatingActionButton(
                     onPressed: () async {
-                      await FirebaseAuth.instance
-                          .signOut();
+                      await FirebaseAuth.instance.signOut();
 
                       Navigator.pushAndRemoveUntil(
                         // ignore: use_build_context_synchronously
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              const AuthStudent(),
+                          builder: (context) => const AuthStudent(),
                         ),
                         (route) => false,
                       );
                     },
                   ),
 
-                  body: const Center(
-                    child: Text('User data not found.'),
-                  ),
+                  body: const Center(child: Text('User data not found.')),
                 );
               }
 
               final userData =
-                  userSnapshot.data!.data()
-                      as Map<String, dynamic>;
+                  userSnapshot.data!.data() as Map<String, dynamic>;
 
-              final role =
-                  userData['role']
-                          ?.toString()
-                          .toLowerCase() ??
-                      '';
+              final role = userData['role']?.toString().toLowerCase() ?? '';
 
-              List<dynamic>? classes =
-                  userData['linkedClasses'] ?? [];
+              List<dynamic>? classes = userData['linkedClasses'] ?? [];
 
-              final approve =
-                  userData['approved']
-                      .toString()
-                      .toLowerCase();
+              final approve = userData['approved'].toString().toLowerCase();
 
-              final schoolname =
-                  userData['linkedChildren']
-                          ?.toString() ??
-                      '';
+              final schoolname = userData['linkedChildren']?.toString() ?? '';
 
-              final schoolId =
-                  userData['schoolId']
-                          ?.toString() ??
-                      '';
+              final schoolId = userData['schoolId']?.toString() ?? '';
 
               if (schoolId.isEmpty) {
                 return const Scaffold(
-                  body: Center(
-                    child:
-                        Text('School ID not found.'),
-                  ),
+                  body: Center(child: Text('School ID not found.')),
                 );
               }
 
@@ -195,21 +180,16 @@ class MyApp extends StatelessWidget {
                       .snapshots(),
 
                   builder: (context, asyncSnapshot) {
-                    final data =
-                        asyncSnapshot.data?.data();
+                    final data = asyncSnapshot.data?.data();
 
-                    final subscription =
-                        data?['subscription']
-                            .toString()
-                            .toLowerCase();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
 
                     if (asyncSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Scaffold(
-                        body: Center(
-                          child:
-                              CircularProgressIndicator(),
-                        ),
+                        body: Center(child: CircularProgressIndicator()),
                       );
                     }
 
@@ -234,21 +214,16 @@ class MyApp extends StatelessWidget {
                       .snapshots(),
 
                   builder: (context, asyncSnapshot) {
-                    final data =
-                        asyncSnapshot.data?.data();
+                    final data = asyncSnapshot.data?.data();
 
-                    final subscription =
-                        data?['subscription']
-                            .toString()
-                            .toLowerCase();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
 
                     if (asyncSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Scaffold(
-                        body: Center(
-                          child:
-                              CircularProgressIndicator(),
-                        ),
+                        body: Center(child: CircularProgressIndicator()),
                       );
                     }
 
@@ -258,10 +233,7 @@ class MyApp extends StatelessWidget {
 
                     return DailyAttendanceChartSecurity(
                       schoolId: schoolId,
-                      date: DateTime.now()
-                          .toIso8601String()
-                          .split('T')
-                          .first,
+                      date: DateTime.now().toIso8601String().split('T').first,
                     );
                   },
                 );
@@ -276,21 +248,16 @@ class MyApp extends StatelessWidget {
                       .snapshots(),
 
                   builder: (context, asyncSnapshot) {
-                    final data =
-                        asyncSnapshot.data?.data();
+                    final data = asyncSnapshot.data?.data();
 
-                    final subscription =
-                        data?['subscription']
-                            .toString()
-                            .toLowerCase();
+                    final subscription = data?['subscription']
+                        .toString()
+                        .toLowerCase();
 
                     if (asyncSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Scaffold(
-                        body: Center(
-                          child:
-                              CircularProgressIndicator(),
-                        ),
+                        body: Center(child: CircularProgressIndicator()),
                       );
                     }
 
@@ -315,21 +282,16 @@ class MyApp extends StatelessWidget {
                     .snapshots(),
 
                 builder: (context, asyncSnapshot) {
-                  final data =
-                      asyncSnapshot.data?.data();
+                  final data = asyncSnapshot.data?.data();
 
-                  final subscription =
-                      data?['subscription']
-                          .toString()
-                          .toLowerCase();
+                  final subscription = data?['subscription']
+                      .toString()
+                      .toLowerCase();
 
                   if (asyncSnapshot.connectionState ==
                       ConnectionState.waiting) {
                     return const Scaffold(
-                      body: Center(
-                        child:
-                            CircularProgressIndicator(),
-                      ),
+                      body: Center(child: CircularProgressIndicator()),
                     );
                   }
 
@@ -337,10 +299,7 @@ class MyApp extends StatelessWidget {
                     return InactiveSub();
                   }
 
-                  return TeacherHome(
-                    schoolname: schoolname,
-                    approve: approve,
-                  );
+                  return TeacherHome(schoolname: schoolname, approve: approve);
                 },
               );
             },

@@ -3,7 +3,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
 
-import 'package:banco_mobile/DataBase/P4/Term%20II/p4_database_term2.dart';
 import 'package:banco_mobile/DataBase/P4/Term%20III/p4_database_term3.dart';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/Reports/comments.dart';

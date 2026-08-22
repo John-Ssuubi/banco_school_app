@@ -195,7 +195,7 @@ class _BulkPrintP4Term2T3State extends State<BulkPrintP4Term2> {
     if (kDebugMode) {
       print("Starting print process...");
     }
-
+  
     if (kDebugMode) {
       print(widget.d1Start);
       print(widget.d2Start);
