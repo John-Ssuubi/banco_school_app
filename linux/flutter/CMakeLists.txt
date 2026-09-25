@@ -4,7 +4,32 @@ cmake_minimum_required(VERSION 3.10)
 set(EPHEMERAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ephemeral")
 
 # Configuration provided via flutter tool.
-include(${EPHEMERAL_DIR}/generated_config.cmake)
+set(_flutter_generated_config_candidates
+  "${EPHEMERAL_DIR}/generated_config.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../ephemeral/generated_config.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../ephemeral/generated_config.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../ephemeral/generated_config.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../ephemeral/generated_config.cmake"
+  "${PROJECT_SOURCE_DIR}/ephemeral/generated_config.cmake"
+  "${PROJECT_SOURCE_DIR}/linux/ephemeral/generated_config.cmake"
+  "${PROJECT_SOURCE_DIR}/linux/flutter/ephemeral/generated_config.cmake"
+)
+
+set(_flutter_generated_config_found FALSE)
+foreach(_flutter_generated_config IN LISTS _flutter_generated_config_candidates)
+  if(EXISTS "${_flutter_generated_config}")
+    get_filename_component(EPHEMERAL_DIR "${_flutter_generated_config}" DIRECTORY)
+    include("${_flutter_generated_config}")
+    set(_flutter_generated_config_found TRUE)
+    break()
+  endif()
+endforeach()
+
+if(NOT _flutter_generated_config_found)
+  message(FATAL_ERROR
+    "Flutter generated configuration not found. Checked: ${_flutter_generated_config_candidates}"
+  )
+endif()
 
 # TODO: Move the rest of this into files in ephemeral. See
 # https://github.com/flutter/flutter/issues/57146.

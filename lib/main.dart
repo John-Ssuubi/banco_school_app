@@ -19,15 +19,18 @@ import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
-// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
-import 'dart:html' as html;
+// Conditional import: pulls dart:html ONLY on web
+import 'web_url_helper.dart'
+    if (dart.library.html) 'web_url_helper_web.dart' as web_helper;
 
-/// Background handler
+/// Background handler (Android/iOS only — not used on web)
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   if (kDebugMode) {
-    print("Handling background message: ${message.notification?.title}");
+    debugPrint("Handling background message: ${message.notification?.title}");
   }
 }
 
@@ -40,13 +43,38 @@ Future<void> main() async {
   tz.setLocalLocation(tz.getLocation('Africa/Nairobi'));
 
   /// 3. Firebase initialization
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  /// 4. Notifications (NOT supported on Web)
+  /// 4. Notifications — only on mobile, NOT on web
   if (!kIsWeb) {
-    await AwesomeNotificationsEngine.initializeAwesomeNotifications();
+    // Register background handler (Android/iOS)
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+    await AwesomeNotificationsEngine.initializeAwesomeNotifications();
     await initNotifications();
+  } else {
+    // Web: request FCM permission and get token (needs VAPID key)
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission();
+
+      // IMPORTANT: replace with your VAPID public key from Firebase Console
+      // Project Settings → Cloud Messaging → Web Push certificates
+      const vapidKey = 'YOUR_PUBLIC_VAPID_KEY_HERE';
+
+      final token = await messaging.getToken(
+        vapidKey: vapidKey,
+      );
+      if (kDebugMode) {
+        debugPrint('Web FCM token: $token');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Web FCM setup failed: $e');
+      }
+    }
   }
 
   /// 5. Run app
@@ -64,12 +92,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
-
         builder: (context, snapshot) {
-          /// Loading state
+          /// Loading
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
@@ -78,22 +104,10 @@ class MyApp extends StatelessWidget {
 
           /// Not logged in
           if (!snapshot.hasData) {
-            String? schoolId;
-            try {
-              final uri = Uri.parse(html.window.location.href);
-              final rawSchoolId = uri.queryParameters['schoolId'];
+            final schoolId = web_helper.getSchoolIdFromUrl();
 
-              if (rawSchoolId != null && rawSchoolId.isNotEmpty) {
-                // Decode the URL-encoded school ID
-                schoolId = Uri.decodeComponent(rawSchoolId);
-                if (kDebugMode) {
-                  print('Received school ID: $schoolId');
-                }
-              }
-            } catch (e) {
-              if (kDebugMode) {
-                print('Error parsing school ID: $e');
-              }
+            if (kDebugMode && schoolId != null) {
+              debugPrint('Received school ID: $schoolId');
             }
 
             return LandingPage(
@@ -108,7 +122,6 @@ class MyApp extends StatelessWidget {
                 .collection('Users')
                 .doc(snapshot.data!.uid)
                 .get(),
-
             builder: (context, userSnapshot) {
               if (userSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
@@ -127,9 +140,8 @@ class MyApp extends StatelessWidget {
                   floatingActionButton: FloatingActionButton(
                     onPressed: () async {
                       await FirebaseAuth.instance.signOut();
-
+                      if (!context.mounted) return;
                       Navigator.pushAndRemoveUntil(
-                        // ignore: use_build_context_synchronously
                         context,
                         MaterialPageRoute(
                           builder: (context) => const AuthStudent(),
@@ -138,7 +150,6 @@ class MyApp extends StatelessWidget {
                       );
                     },
                   ),
-
                   body: const Center(child: Text('User data not found.')),
                 );
               }
@@ -147,13 +158,11 @@ class MyApp extends StatelessWidget {
                   userSnapshot.data!.data() as Map<String, dynamic>;
 
               final role = userData['role']?.toString().toLowerCase() ?? '';
-
-              List<dynamic>? classes = userData['linkedClasses'] ?? [];
-
-              final approve = userData['approved'].toString().toLowerCase();
-
-              final schoolname = userData['linkedChildren']?.toString() ?? '';
-
+              final List<dynamic> classes = userData['linkedClasses'] ?? [];
+              final approve =
+                  userData['approved']?.toString().toLowerCase() ?? 'false';
+              final schoolname =
+                  userData['linkedChildren']?.toString() ?? '';
               final schoolId = userData['schoolId']?.toString() ?? '';
 
               if (schoolId.isEmpty) {
@@ -172,139 +181,88 @@ class MyApp extends StatelessWidget {
 
               /// Admin
               if (role == 'admin') {
-                return StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('Schools')
-                      .doc(schoolId)
-                      .snapshots(),
-
-                  builder: (context, asyncSnapshot) {
-                    final data = asyncSnapshot.data?.data();
-
-                    final subscription = data?['subscription']
-                        .toString()
-                        .toLowerCase();
-
-                    if (asyncSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    if (subscription != 'paid') {
-                      return InactiveSub();
-                    }
-
-                    return AdminDashboard(
-                      approve: approve,
-                      schoolname: schoolname,
-                    );
-                  },
+                return _SubscriptionGate(
+                  schoolId: schoolId,
+                  builder: (ctx) => AdminDashboard(
+                    approve: approve,
+                    schoolname: schoolname,
+                  ),
                 );
               }
 
               /// Security
               if (role == 'security') {
-                return StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('Schools')
-                      .doc(schoolId)
-                      .snapshots(),
-
-                  builder: (context, asyncSnapshot) {
-                    final data = asyncSnapshot.data?.data();
-
-                    final subscription = data?['subscription']
-                        .toString()
-                        .toLowerCase();
-
-                    if (asyncSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    if (subscription != 'paid') {
-                      return InactiveSub();
-                    }
-
-                    return DailyAttendanceChartSecurity(
-                      schoolId: schoolId,
-                      date: DateTime.now().toIso8601String().split('T').first,
-                    );
-                  },
+                return _SubscriptionGate(
+                  schoolId: schoolId,
+                  builder: (ctx) => DailyAttendanceChartSecurity(
+                    schoolId: schoolId,
+                    date: DateTime.now().toIso8601String().split('T').first,
+                  ),
                 );
               }
 
               /// Headteacher
               if (role == 'headteacher') {
-                return StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('Schools')
-                      .doc(schoolId)
-                      .snapshots(),
-
-                  builder: (context, asyncSnapshot) {
-                    final data = asyncSnapshot.data?.data();
-
-                    final subscription = data?['subscription']
-                        .toString()
-                        .toLowerCase();
-
-                    if (asyncSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Scaffold(
-                        body: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    if (subscription != 'paid') {
-                      return InactiveSub();
-                    }
-
-                    return HeadTeacherDashboard(
-                      classes: classes,
-                      approve: approve,
-                      schoolId: schoolId,
-                    );
-                  },
+                return _SubscriptionGate(
+                  schoolId: schoolId,
+                  builder: (ctx) => HeadTeacherDashboard(
+                    classes: classes,
+                    approve: approve,
+                    schoolId: schoolId,
+                  ),
                 );
               }
 
               /// Teacher (default)
-              return StreamBuilder(
-                stream: FirebaseFirestore.instance
-                    .collection('Schools')
-                    .doc(schoolId)
-                    .snapshots(),
-
-                builder: (context, asyncSnapshot) {
-                  final data = asyncSnapshot.data?.data();
-
-                  final subscription = data?['subscription']
-                      .toString()
-                      .toLowerCase();
-
-                  if (asyncSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Scaffold(
-                      body: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  if (subscription != 'paid') {
-                    return InactiveSub();
-                  }
-
-                  return TeacherHome(schoolname: schoolname, approve: approve);
-                },
+              return _SubscriptionGate(
+                schoolId: schoolId,
+                builder: (ctx) => TeacherHome(
+                  schoolname: schoolname,
+                  approve: approve,
+                ),
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+/// Reusable subscription gate (DRY — replaces 4 copies of the same StreamBuilder)
+class _SubscriptionGate extends StatelessWidget {
+  const _SubscriptionGate({
+    required this.schoolId,
+    required this.builder,
+  });
+
+  final String schoolId;
+  final Widget Function(BuildContext context) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(schoolId)
+          .snapshots(),
+      builder: (context, asyncSnapshot) {
+        if (asyncSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final data = asyncSnapshot.data?.data() as Map<String, dynamic>?;
+        final subscription =
+            data?['subscription']?.toString().toLowerCase() ?? '';
+
+        if (subscription != 'paid') {
+          return const InactiveSub();
+        }
+
+        return builder(context);
+      },
     );
   }
 }

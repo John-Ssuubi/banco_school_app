@@ -35,6 +35,8 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
     with SingleTickerProviderStateMixin {
   int totalStudents = 0;
   int presentToday = 0;
+  int staffPresentToday = 0;
+  int totalStaff = 0;
   bool loading = true;
 
   List<LinkedParent> parentsList = [];
@@ -164,7 +166,7 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
     FirebaseFirestore.instance
         .collection('Schools')
         .doc(widget.schoolId)
-        .collection('staffMembers')
+        .collection('LinkedStaff')  // Changed from 'staffMembers' to 'LinkedStaff'
         .snapshots()
         .listen((snapshot) {
       if (!mounted) return;
@@ -172,13 +174,15 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
         staffList = snapshot.docs.map((doc) {
           final d = doc.data();
           return StaffMember(
-            uid: d['teacherUid'],
+            uid: d['teacherUid'] ?? doc.id,
             firstName: d['firstName'] ?? '',
             secondName: d['secondName'] ?? '',
-            role: d['role'] ?? '',
+            role: d['role'] ?? 'staff',
             phone: d['phone'] ?? '',
+            email: d['email'] ?? '',
           );
         }).toList();
+        totalStaff = staffList.length;
       });
     });
   }
@@ -191,18 +195,34 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
           .doc(widget.schoolId);
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
+      // Get total students
       final studentsSnap = await schoolRef.collection('studentIndex').get();
-      final attendanceSnap = await schoolRef
+      
+      // Get student attendance for today
+      final studentAttendanceSnap = await schoolRef
           .collection('attendance')
           .doc(today)
           .collection('students')
           .where('status', isEqualTo: 'present')
           .get();
 
+      // Get staff attendance for today
+      final staffAttendanceSnap = await schoolRef
+          .collection('attendance')
+          .doc(today)
+          .collection('staff')
+          .where('status', isEqualTo: 'present')
+          .get();
+
+      // Get total staff count
+      final staffSnap = await schoolRef.collection('LinkedStaff').get();
+
       if (mounted) {
         setState(() {
           totalStudents = studentsSnap.docs.length;
-          presentToday = attendanceSnap.docs.length;
+          presentToday = studentAttendanceSnap.docs.length;
+          staffPresentToday = staffAttendanceSnap.docs.length;
+          totalStaff = staffSnap.docs.length;
           loading = false;
         });
         _fadeController.forward(from: 0);
@@ -681,6 +701,7 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
             : 'Good Evening';
     final dateStr = DateFormat('EEEE, MMMM d').format(now);
     final absent = totalStudents - presentToday;
+    final totalPresent = presentToday + staffPresentToday;
     final rate = totalStudents > 0
         ? (presentToday / totalStudents * 100).toStringAsFixed(1)
         : '0.0';
@@ -765,7 +786,7 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
                   _heroPill(
                       icon: Icons.check_circle_rounded,
                       label: 'Present',
-                      value: '$presentToday'),
+                      value: '$totalPresent'),
                   const SizedBox(width: 10),
                   _heroPill(
                       icon: Icons.cancel_rounded,
@@ -827,7 +848,7 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
       case 0: return totalStudents;
       case 1: return parentsList.length;
       case 2: return staffList.length;
-      case 3: return presentToday;
+      case 3: return presentToday + staffPresentToday;
       default: return 0;
     }
   }
@@ -918,8 +939,10 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
   // ─── Chart ─────────────────────────────────────────────────────────────────
 
   Widget _buildChartCard() {
-    final absent = totalStudents - presentToday;
-    final hasData = totalStudents > 0;
+    final totalPresent = presentToday + staffPresentToday;
+    final totalAll = totalStudents + totalStaff;
+    final absent = totalAll - totalPresent;
+    final hasData = totalAll > 0;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
@@ -966,7 +989,7 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
                       centerSpaceRadius: 50,
                       sections: [
                         PieChartSectionData(
-                          value: presentToday.toDouble(),
+                          value: totalPresent.toDouble(),
                           color: const Color(0xFF00897B),
                           radius: 60,
                           title: '',
@@ -996,6 +1019,25 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
               _legend(color: Colors.red.shade400, label: 'Absent'),
             ],
           ),
+          // Add staff/student breakdown
+          if (hasData) ...[
+            const SizedBox(height: 12),
+            Divider(color: Colors.grey.shade200),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _legend(
+                  color: Colors.blue,
+                  label: 'Students: $presentToday',
+                ),
+                _legend(
+                  color: Colors.purple,
+                  label: 'Staff: $staffPresentToday',
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1022,9 +1064,11 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
   // ─── Summary Card ──────────────────────────────────────────────────────────
 
   Widget _buildSummaryCard() {
-    final absent = totalStudents - presentToday;
-    final rate = totalStudents > 0
-        ? (presentToday / totalStudents * 100).toStringAsFixed(1)
+    final totalPresent = presentToday + staffPresentToday;
+    final totalAll = totalStudents + totalStaff;
+    final absent = totalAll - totalPresent;
+    final rate = totalAll > 0
+        ? (totalPresent / totalAll * 100).toStringAsFixed(1)
         : '0.0';
 
     return Container(
@@ -1066,8 +1110,17 @@ class _AdminDashboardRevisedState extends State<AdminDashboardRevised>
           _summaryRow('Total Students', '$totalStudents',
               Icons.school_rounded, const Color(0xFF1E88E5)),
           _summaryDivider(),
-          _summaryRow('Present', '$presentToday',
+          _summaryRow('Total Staff', '$totalStaff',
+              Icons.person_rounded, const Color(0xFF8E24AA)),
+          _summaryDivider(),
+          _summaryRow('Total Present', '$totalPresent',
               Icons.check_circle_rounded, const Color(0xFF00897B)),
+          _summaryDivider(),
+          _summaryRow('Present Students', '$presentToday',
+              Icons.school_rounded, const Color(0xFF1565C0)),
+          _summaryDivider(),
+          _summaryRow('Present Staff', '$staffPresentToday',
+              Icons.person_rounded, const Color(0xFF6A1B9A)),
           _summaryDivider(),
           _summaryRow('Absent', '$absent',
               Icons.cancel_rounded, Colors.red.shade400),

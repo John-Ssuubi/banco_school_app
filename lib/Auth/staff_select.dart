@@ -46,7 +46,9 @@ class _StaffSelectState extends State<StaffSelect> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CreateAccountHeadteacher()),
+                MaterialPageRoute(builder: (context) => CreateAccountHeadteacher(
+                  selectedSchoolId: widget.selectedSchoolId
+                )),
               );
             },
           ),
@@ -54,7 +56,9 @@ class _StaffSelectState extends State<StaffSelect> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CreateAccountAdmin()),
+                MaterialPageRoute(builder: (context) => CreateAccountAdmin(
+                  selectedSchoolId: widget.selectedSchoolId
+                )),
               );
             },
             child: ListTile(
@@ -101,7 +105,9 @@ class _StaffSelectState extends State<StaffSelect> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CreateAccountTeacher()),
+                MaterialPageRoute(builder: (context) => CreateAccountTeacher(
+                  selectedSchoolId: widget.selectedSchoolId
+                )),
               );
             },
           ),

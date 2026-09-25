@@ -35,6 +35,9 @@ String _resolveGrade(
   int f9End,
 ) {
   if (score == -1) return 'X';
+   if (score <= f9Start) {
+    return 'F9';
+  }
   if (score <= p8Start) {
     return 'P8';
   }

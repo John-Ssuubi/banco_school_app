@@ -2,7 +2,7 @@
 
 import 'package:banco_mobile/Auth/auth_student.dart';
 import 'package:banco_mobile/BarCodeScanner/barcode_scanner.dart';
-import 'package:banco_mobile/HeadTeacher/about_school.dart';
+import 'package:banco_mobile/HeadTeacher/aboutSchool/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/Teachers/SettingsTeacher/settings_teacher.dart';
 import 'package:banco_mobile/styles.dart';

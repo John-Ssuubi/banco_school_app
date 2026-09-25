@@ -65,6 +65,8 @@ dependencies:
   http: ^1.6.0
   image_picker: ^1.0.0
   firebase_storage: ^13.4.6
+  universal_io: ^2.2.2
+  crypto: ^3.0.7
 
 
 dev_dependencies:
@@ -79,6 +81,9 @@ dev_dependencies:
   file_picker: ^11.0.2
   flutter_excel: ^1.0.1
   flutter_staggered_animations: ^1.1.0
+  dio: ^5.7.0
+  xml: ^6.5.0
+  connectivity_plus: ^6.0.5
   
 
 

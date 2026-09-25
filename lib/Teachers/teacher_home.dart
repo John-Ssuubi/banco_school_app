@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, unused_field
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/HeadTeacher/about_school.dart';
+import 'package:banco_mobile/HeadTeacher/aboutSchool/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/Notifications/local_notifications.dart';
 import 'package:banco_mobile/Teachers/teacher_classes_stat.dart';

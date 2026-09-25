@@ -1,7 +1,8 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:banco_mobile/Auth/auth_student.dart';
-import 'package:banco_mobile/HeadTeacher/about_school.dart';
+import 'package:banco_mobile/HeadTeacher/Fees/schoolfees.dart';
+import 'package:banco_mobile/HeadTeacher/aboutSchool/about_school.dart';
 import 'package:banco_mobile/HeadTeacher/headteacher_assessment.dart';
 import 'package:banco_mobile/HeadTeacher/Results/headteacher_classes.dart';
 import 'package:banco_mobile/HeadTeacher/attendance.dart';
@@ -48,6 +49,17 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
       title: 'Results',
       subtitle: 'View student grades',
       icon: Icons.workspace_premium_rounded,
+      color: const Color.fromARGB(255, 0, 105, 137),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF00897B), Color.fromARGB(255, 0, 11, 105)],
+      ),
+    ),
+    DashboardItem(
+      title: 'School Fees',
+      subtitle: 'View school fees balance',
+      icon: Icons.account_balance_outlined,
       color: const Color(0xFF00897B),
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
@@ -112,8 +124,9 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           .get();
       if (userDoc.exists) {
         final data = userDoc.data()!;
-        final classes =
-            List<Map<String, dynamic>>.from(data['linkedClasses'] ?? []);
+        final classes = List<Map<String, dynamic>>.from(
+          data['linkedClasses'] ?? [],
+        );
         setState(() {
           schoolClasses = classes;
           if (classes.isNotEmpty) schoolId = classes.first['schoolId'];
@@ -151,8 +164,9 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           context: context,
           barrierColor: Colors.black54,
           builder: (context) => Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             elevation: 0,
             backgroundColor: Colors.transparent,
             child: Container(
@@ -162,9 +176,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10)),
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
                 ],
               ),
               child: Column(
@@ -176,23 +191,26 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                       color: Colors.red.shade50,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.logout_rounded,
-                        color: Colors.red.shade600, size: 32),
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: Colors.red.shade600,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   const Text(
                     "Sign Out",
                     style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E)),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A2E),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     "Are you sure you want to sign out of your account?",
                     textAlign: TextAlign.center,
-                    style:
-                        TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 28),
                   Row(
@@ -203,12 +221,14 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             side: BorderSide(color: Colors.grey.shade300),
                           ),
-                          child: Text("Cancel",
-                              style:
-                                  TextStyle(color: Colors.grey.shade700)),
+                          child: Text(
+                            "Cancel",
+                            style: TextStyle(color: Colors.grey.shade700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -221,10 +241,13 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text("Sign Out",
-                              style: TextStyle(fontWeight: FontWeight.w600)),
+                          child: const Text(
+                            "Sign Out",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                     ],
@@ -241,9 +264,13 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fadeAnimation =
-        CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
     AwesomeNotificationsEngine.scheduledNotificationAwesome();
     loadData().then((_) => _fadeController.forward());
   }
@@ -285,7 +312,8 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                       ? _buildLoadingState()
                       : FadeTransition(
                           opacity: _fadeAnimation,
-                          child: _buildDashboardContent()),
+                          child: _buildDashboardContent(),
+                        ),
                 ),
               ],
             );
@@ -293,7 +321,9 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           return isLoading
               ? _buildLoadingState()
               : FadeTransition(
-                  opacity: _fadeAnimation, child: _buildDashboardContent());
+                  opacity: _fadeAnimation,
+                  child: _buildDashboardContent(),
+                );
         },
       ),
     );
@@ -335,17 +365,19 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
               const Text(
                 "Dashboard",
                 style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    fontSize: 20,
-                    letterSpacing: 0.3),
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 20,
+                  letterSpacing: 0.3,
+                ),
               ),
               Text(
                 "Welcome back, $name",
                 style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w400),
+                  fontSize: 12,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ],
           );
@@ -360,19 +392,26 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.6), width: 2),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.6),
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.white.withOpacity(0.15),
-                child: const Icon(Icons.person_rounded,
-                    color: Colors.white, size: 22),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -424,9 +463,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                       onTap: () {
                         if (!_isLargeScreen) Navigator.pop(context);
                         Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => SettingsTeacher()));
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SettingsTeacher(),
+                          ),
+                        );
                       },
                     ),
                     _buildAboutSchoolItem(userSchoolId, context),
@@ -447,13 +488,18 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    Icon(Icons.shield_rounded,
-                        size: 14, color: Colors.grey.shade400),
+                    Icon(
+                      Icons.shield_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'Banco Mobile v1.0.0',
                       style: TextStyle(
-                          color: Colors.grey.shade400, fontSize: 11),
+                        color: Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -465,8 +511,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     );
   }
 
-  Widget _buildDrawerHeader(
-      String firstName, String secondName, String role) {
+  Widget _buildDrawerHeader(String firstName, String secondName, String role) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -484,9 +529,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
               border: Border.all(color: Colors.white, width: 2.5),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4))
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: const CircleAvatar(
@@ -503,16 +549,19 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 Text(
                   "$firstName $secondName",
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.white,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -520,10 +569,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                   child: Text(
                     role.toUpperCase(),
                     style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5),
+                      fontSize: 10,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],
@@ -540,10 +590,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey.shade400,
-            letterSpacing: 1.2),
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade400,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -556,8 +607,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           .snapshots(),
       builder: (context, schoolSnapshot) {
         if (!schoolSnapshot.hasData) return const SizedBox();
-        final data =
-            schoolSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+        final data = schoolSnapshot.data!.data() as Map<String, dynamic>? ?? {};
 
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -671,11 +721,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 : (color ?? Colors.grey.shade700).withOpacity(0.08),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon,
-              color: isActive
-                  ? mainColor
-                  : (color ?? Colors.grey.shade600),
-              size: 20),
+          child: Icon(
+            icon,
+            color: isActive ? mainColor : (color ?? Colors.grey.shade600),
+            size: 20,
+          ),
         ),
         title: Text(
           title,
@@ -696,10 +746,8 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
               )
             : null,
         onTap: onTap,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         dense: true,
       ),
     );
@@ -732,9 +780,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
             child: Text(
               "Quick Actions",
               style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A202C)),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1A202C),
+              ),
             ),
           ),
         ),
@@ -742,8 +791,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           sliver: SliverGrid(
             delegate: SliverChildBuilderDelegate(
-              (context, index) =>
-                  _buildDashboardCard(menuItems[index], index),
+              (context, index) => _buildDashboardCard(menuItems[index], index),
               childCount: menuItems.length,
             ),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -766,8 +814,8 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     final greeting = now.hour < 12
         ? "Good Morning"
         : now.hour < 17
-            ? "Good Afternoon"
-            : "Good Evening";
+        ? "Good Afternoon"
+        : "Good Evening";
     final dateStr = DateFormat('EEEE, MMMM d').format(now);
 
     return Container(
@@ -776,14 +824,18 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [mainColor, Color.lerp(mainColor, const Color(0xFF000033), 0.3)!],
+          colors: [
+            mainColor,
+            Color.lerp(mainColor, const Color(0xFF000033), 0.3)!,
+          ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: mainColor.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 8)),
+            color: mainColor.withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Stack(
@@ -821,22 +873,28 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.wb_sunny_rounded,
-                              color: Colors.amber, size: 14),
+                          const Icon(
+                            Icons.wb_sunny_rounded,
+                            color: Colors.amber,
+                            size: 14,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             dateStr,
                             style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500),
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -847,18 +905,20 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 Text(
                   greeting,
                   style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400),
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   schoolName.isNotEmpty ? schoolName : 'Your School',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2),
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -867,9 +927,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                   Text(
                     '"$schoolMoto"',
                     style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic),
+                      color: Colors.white60,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -877,12 +938,16 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(
-                        color: Colors.white.withOpacity(0.2), width: 1),
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -899,9 +964,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                       const Text(
                         "System Online",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -934,9 +1000,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                  color: item.color.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6)),
+                color: item.color.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
             ],
           ),
           child: Stack(
@@ -944,8 +1011,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
               Positioned(
                 right: -15,
                 bottom: -15,
-                child: Icon(item.icon,
-                    size: 90, color: Colors.white.withOpacity(0.08)),
+                child: Icon(
+                  item.icon,
+                  size: 90,
+                  color: Colors.white.withOpacity(0.08),
+                ),
               ),
               Positioned(
                 left: -10,
@@ -979,17 +1049,19 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                         Text(
                           item.title,
                           style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.2),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           item.subtitle,
                           style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withOpacity(0.75)),
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.75),
+                          ),
                         ),
                       ],
                     ),
@@ -1024,17 +1096,19 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2))
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: Text(
               count > 99 ? '99+' : '$count',
               style: TextStyle(
-                  color: Colors.red.shade600,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800),
+                color: Colors.red.shade600,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         );
@@ -1056,22 +1130,25 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                      color: mainColor.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8))
+                    color: mainColor.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
               child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(mainColor),
-                  strokeWidth: 3),
+                valueColor: AlwaysStoppedAnimation<Color>(mainColor),
+                strokeWidth: 3,
+              ),
             ),
             const SizedBox(height: 20),
             Text(
               'Loading dashboard...',
               style: TextStyle(
-                  color: Colors.grey.shade500,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500),
+                color: Colors.grey.shade500,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -1083,41 +1160,65 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     switch (item.title) {
       case 'Results':
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => HeadteacherClasses(
-                    classes: widget.classes, approve: widget.approve)));
+          context,
+          MaterialPageRoute(
+            builder: (context) => HeadteacherClasses(
+              classes: widget.classes,
+              approve: widget.approve,
+            ),
+          ),
+        );
+        break;
+      case 'School Fees':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SchoolFees(
+             
+            ),
+          ),
+        );
         break;
       case 'Attendance':
         final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => AttendanceScreen(
-                    schoolId: widget.schoolId, today: today)));
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                AttendanceScreen(schoolId: widget.schoolId, today: today),
+          ),
+        );
         break;
       case 'Notifications':
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    HeadTeacherTabs(schoolId: schoolId!)));
+          context,
+          MaterialPageRoute(
+            builder: (context) => HeadTeacherTabs(schoolId: schoolId!),
+          ),
+        );
         break;
       case 'Statistics':
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => HeadteacherStat(
-                    classes: widget.classes,
-                    approve: widget.approve,
-                    schoolId: widget.schoolId)));
+          context,
+          MaterialPageRoute(
+            builder: (context) => HeadteacherStat(
+              classes: widget.classes,
+              approve: widget.approve,
+              schoolId: widget.schoolId,
+            ),
+          ),
+        );
         break;
       case 'Assessment':
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => HeadteacherAssessment(
-                    classes: widget.classes, approve: widget.approve)));
+          context,
+          MaterialPageRoute(
+            builder: (context) => HeadteacherAssessment(
+              classes: widget.classes,
+              approve: widget.approve,
+            ),
+          ),
+        );
         break;
     }
   }

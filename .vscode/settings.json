@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "J:/banco_mobile/linux"
+    "cmake.sourceDirectory": "J:/banco_mobile/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

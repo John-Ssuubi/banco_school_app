@@ -47,7 +47,9 @@ class _CreatState extends State<CreateAccountAdmin> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => AdminForm()),
+          MaterialPageRoute(builder: (context) => AdminForm(
+            selectedSchoolId: widget.selectedSchoolId
+          )),
         );
       } catch (e) {
         // Handle errors here, e.g., show a snackbar

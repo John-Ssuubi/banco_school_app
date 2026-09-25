@@ -304,7 +304,7 @@ class _AuthStudentState extends State<AuthStudent>
                       Navigator.pop(ctx);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => StaffSelect()),
+                        MaterialPageRoute(builder: (_) => StaffSelect(selectedSchoolId: widget.selectedSchoolId)),
                       );
                     },
                   ),

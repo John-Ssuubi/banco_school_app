@@ -4,6 +4,7 @@ class StaffMember {
   final String phone;
   final String role;
   final String uid;
+  final String? email; // Optional email field
 
   StaffMember({
     required this.uid,
@@ -11,6 +12,7 @@ class StaffMember {
     required this.secondName,
     required this.phone,
     required this.role,
+    this.email,
   });
 
   factory StaffMember.fromMap(Map<String, dynamic> data) {
@@ -20,6 +22,7 @@ class StaffMember {
       phone: data['phone'] ?? '',
       role: data['role'] ?? '',
       uid: data['teacherUid'],
+      email: data['email'],
     );
   }
 }

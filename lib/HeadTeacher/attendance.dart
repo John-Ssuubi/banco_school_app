@@ -119,13 +119,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final timeOut = student['timeOut'] != null
         ? (student['timeOut'] as Timestamp).toDate()
         : null;
-    
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
         backgroundColor: Colors.transparent,
         child: Container(
@@ -201,7 +199,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ],
                 ),
               ),
-              
+
               // Body content
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -215,7 +213,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       iconColor: mainColor,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     _buildDetailRow(
                       icon: Icons.calendar_today,
                       label: "Date",
@@ -223,7 +221,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       iconColor: mainColor,
                     ),
                     const SizedBox(height: 16),
-                    
+
                     if (timeIn != null)
                       _buildDetailRow(
                         icon: Icons.login,
@@ -232,7 +230,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         iconColor: Colors.blue,
                       ),
                     const SizedBox(height: 16),
-                    
+
                     if (timeOut != null)
                       _buildDetailRow(
                         icon: Icons.logout,
@@ -240,7 +238,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         value: DateFormat('hh:mm a').format(timeOut),
                         iconColor: Colors.orange,
                       ),
-                    
+
                     if (student['remarks'] != null &&
                         student['remarks'].toString().isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -254,7 +252,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.comment, size: 20, color: Colors.grey[600]),
+                            Icon(
+                              Icons.comment,
+                              size: 20,
+                              color: Colors.grey[600],
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -271,9 +273,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     student['remarks'],
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                    ),
+                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 ],
                               ),
@@ -282,9 +282,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -367,13 +367,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       appBar: _buildAppBar(),
       body: loadingDates
           ? _buildLoadingState()
-          : Column(
-              children: [
-                _buildCalendar(),
-                const SizedBox(height: 16),
-                _buildAttendanceHeader(),
-                Expanded(
-                  child: FutureBuilder<List<Map<String, dynamic>>>(
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildCalendar(),
+                  const SizedBox(height: 16),
+                  _buildAttendanceHeader(),
+                  FutureBuilder<List<Map<String, dynamic>>>(
                     future: attendanceFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -384,6 +384,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       }
                       final students = snapshot.data!;
                       return ListView.builder(
+                        shrinkWrap:
+                            true, // Important: allows ListView to size itself
+                        physics:
+                            const NeverScrollableScrollPhysics(), // Disable inner scrolling
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: students.length,
                         itemBuilder: (context, index) {
@@ -393,8 +397,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       );
                     },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
@@ -420,10 +424,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           Text(
             getFormattedDate(),
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
         ],
       ),
@@ -579,9 +580,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => _showStudentDetailsDialog(student),
         borderRadius: BorderRadius.circular(16),
@@ -612,7 +611,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // Student Info
               Expanded(
                 child: Column(
@@ -639,7 +638,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         ),
                         if (timeIn != null) ...[
                           const SizedBox(width: 12),
-                          Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                          Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             DateFormat('hh:mm a').format(timeIn),
@@ -655,10 +658,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ],
                 ),
               ),
-              
+
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: isPresent
                       ? Colors.green.withOpacity(0.1)
@@ -674,7 +680,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 8),
               Icon(Icons.chevron_right, color: Colors.grey[400], size: 20),
             ],
@@ -693,9 +699,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildShimmerEffect() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildEmptyState() {
@@ -703,11 +707,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.history_edu,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.history_edu, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             "No Attendance Records",
@@ -720,10 +720,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           const SizedBox(height: 8),
           Text(
             "No attendance data found for this date",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),

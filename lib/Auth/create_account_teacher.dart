@@ -45,7 +45,9 @@ class _CreateAccountTeacherState extends State<CreateAccountTeacher> {
 
         Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TeacherForm()),
+        MaterialPageRoute(builder: (context) => TeacherForm(
+          selectedSchoolId: widget.selectedSchoolId
+        )),
       );
       } catch (e) {
         // Handle errors here, e.g., show a snackbar

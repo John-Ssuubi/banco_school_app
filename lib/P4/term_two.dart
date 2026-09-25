@@ -86,6 +86,32 @@ Future<void> _loadGrading() async {
     }
   }
 
+  Widget _buildProfileAvatar(String? imageUrl) {
+    final hasImage = imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl != 'null' &&
+        imageUrl != 'Not given';
+
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: Colors.white,
+      backgroundImage: hasImage ? NetworkImage(imageUrl) : null,
+      onBackgroundImageError: hasImage
+          ? (Object exception, StackTrace? stackTrace) {
+              if (kDebugMode) {
+                print('Failed to load profile image: $exception');
+              }
+            }
+          : null,
+      child: !hasImage
+          ? const Icon(
+              Icons.person,
+              size: 60,
+              color: Colors.indigo,
+            )
+          : null,
+    );
+  }
 
   @override
   void initState() {
@@ -122,10 +148,19 @@ Future<void> _loadGrading() async {
             return const Center(child: Text('No students found.'));
           }
 
-          final students = snapshot.data!.docs
+           final docs = snapshot.data!.docs;
+
+          final students = docs
               .map((doc) =>
                   StudentModelP4.fromJson(doc.data() as Map<String, dynamic>))
               .toList();
+
+          // 'image' isn't part of StudentModelP4, so read it straight off
+          // the raw Firestore doc, keeping it index-aligned with `students`.
+          final imageUrls = docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['image'] as String?;
+          }).toList();
 
           // find index of student to start at
           final initialIndex =
@@ -142,6 +177,7 @@ Future<void> _loadGrading() async {
             itemCount: students.length,
             itemBuilder: (context, i) {
               final student = students[i];
+              final imageUrl = imageUrls[i];
 
               return SingleChildScrollView(
                 child: Column(
@@ -189,15 +225,7 @@ Future<void> _loadGrading() async {
                               ],
                             ),
                           ),
-                          const CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.indigo,
-                            ),
-                          ),
+                          _buildProfileAvatar(imageUrl)
                         ],
                       ),
                     ),
@@ -390,6 +418,7 @@ Future<void> _loadGrading() async {
                                 ),
                                 onPressed: () async {
                                   await ReportCardPdfTermII.generate(
+                                    
                                      d1Start: d1Start,
                                       d2Start: d2Start,
                                       c3Start: c3Start,
@@ -409,6 +438,7 @@ Future<void> _loadGrading() async {
                                     pobox: pobox,
                                     email: email,
                                     year: DateTime.now().year,
+                                    imageUrl: imageUrl
                                   );
                                 },
                               );

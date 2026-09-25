@@ -25,7 +25,7 @@ class TermThree extends StatefulWidget {
 
 class _TermThreeState extends State<TermThree> {
   late PageController _pageController;
- int d1Start = 0, d1End = 0;
+  int d1Start = 0, d1End = 0;
   int d2Start = 0, d2End = 0;
   int c3Start = 0, c3End = 0;
   int c4Start = 0, c4End = 0;
@@ -37,7 +37,7 @@ class _TermThreeState extends State<TermThree> {
 
   bool gradingLoaded = false;
 
-Future<void> _loadGrading() async {
+  Future<void> _loadGrading() async {
     try {
       final doc = await FirebaseFirestore.instance
           .collection('Schools')
@@ -49,31 +49,31 @@ Future<void> _loadGrading() async {
       final data = doc.data()!;
 
       d1Start = data['D1Start'];
-      d1End   = data['D1End'];
+      d1End = data['D1End'];
 
       d2Start = data['D2Start'];
-      d2End   = data['D2End'];
+      d2End = data['D2End'];
 
       c3Start = data['c3Start'];
-      c3End   = data['c3End'];
+      c3End = data['c3End'];
 
       c4Start = data['c4Start'];
-      c4End   = data['c4End'];
+      c4End = data['c4End'];
 
       c5Start = data['c5Start'];
-      c5End   = data['c5End'];
+      c5End = data['c5End'];
 
       c6Start = data['c6Start'];
-      c6End   = data['c6End'];
+      c6End = data['c6End'];
 
       p7Start = data['p7Start'];
-      p7End   = data['p7End'];
+      p7End = data['p7End'];
 
       p8Start = data['p8Start'];
-      p8End   = data['p8End'];
+      p8End = data['p8End'];
 
       f9Start = data['f9Start'];
-      f9End   = data['f9End'];
+      f9End = data['f9End'];
 
       setState(() {
         gradingLoaded = true;
@@ -85,13 +85,39 @@ Future<void> _loadGrading() async {
     }
   }
 
+  Widget _buildProfileAvatar(String? imageUrl) {
+    final hasImage = imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl != 'null' &&
+        imageUrl != 'Not given';
+
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: Colors.white,
+      backgroundImage: hasImage ? NetworkImage(imageUrl) : null,
+      onBackgroundImageError: hasImage
+          ? (Object exception, StackTrace? stackTrace) {
+              if (kDebugMode) {
+                print('Failed to load profile image: $exception');
+              }
+            }
+          : null,
+      child: !hasImage
+          ? const Icon(
+              Icons.person,
+              size: 60,
+              color: Colors.indigo,
+            )
+          : null,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _loadGrading();
     _pageController = PageController(
       initialPage: 0,
-
     ); // will jump after snapshot
   }
 
@@ -123,12 +149,21 @@ Future<void> _loadGrading() async {
             return const Center(child: Text('No students found.'));
           }
 
-          final students = snapshot.data!.docs
+          final docs = snapshot.data!.docs;
+
+          final students = docs
               .map(
                 (doc) =>
                     StudentModelP4.fromJson(doc.data() as Map<String, dynamic>),
               )
               .toList();
+
+          // 'image' isn't part of StudentModelP4, so read it straight off
+          // the raw Firestore doc, keeping it index-aligned with `students`.
+          final imageUrls = docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data['image'] as String?;
+          }).toList();
 
           // Find index of the student to start at
           final initialIndex = students.indexWhere(
@@ -146,6 +181,7 @@ Future<void> _loadGrading() async {
             itemCount: students.length,
             itemBuilder: (context, i) {
               final student = students[i];
+              final imageUrl = imageUrls[i];
 
               return SingleChildScrollView(
                 child: Column(
@@ -194,15 +230,7 @@ Future<void> _loadGrading() async {
                               ],
                             ),
                           ),
-                          const CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.indigo,
-                            ),
-                          ),
+                          _buildProfileAvatar(imageUrl),
                         ],
                       ),
                     ),
@@ -269,7 +297,19 @@ Future<void> _loadGrading() async {
                                           ),
                                         ),
                                         Text(
-                                          divCalBOT(subject.scoreBOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divCalBOT(
+                                            subject.scoreBOT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -299,7 +339,19 @@ Future<void> _loadGrading() async {
                                           ),
                                         ),
                                         Text(
-                                          divCalMid(subject.scoreMT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divCalMid(
+                                            subject.scoreMT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -329,7 +381,19 @@ Future<void> _loadGrading() async {
                                           ),
                                         ),
                                         Text(
-                                          divEND(subject.scoreEOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divEND(
+                                            subject.scoreEOT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -369,7 +433,19 @@ Future<void> _loadGrading() async {
                                 ),
                               ),
                               Text(
-                                gradeEotTerm3(student.subjectsScoreTerm3, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                gradeEotTerm3(
+                                  student.subjectsScoreTerm3,
+                                  d1Start,
+                                  d2Start,
+                                  c3Start,
+                                  c4Start,
+                                  c5Start,
+                                  c6Start,
+                                  p7Start,
+                                  p8Start,
+                                  f9Start,
+                                  f9End,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   color: Colors.black,
@@ -415,16 +491,16 @@ Future<void> _loadGrading() async {
                                 ),
                                 onPressed: () async {
                                   await ReportCardPdfTermIII.generate(
-                                     d1Start: d1Start,
-                                      d2Start: d2Start,
-                                      c3Start: c3Start,
-                                      c4Start: c4Start,
-                                      c5Start: c5Start,
-                                      c6Start: c6Start,
-                                      p7Start: p7Start,
-                                      p8Start: p8Start,
-                                      f9Start: f9Start,
-                                      f9End: f9End,
+                                    d1Start: d1Start,
+                                    d2Start: d2Start,
+                                    c3Start: c3Start,
+                                    c4Start: c4Start,
+                                    c5Start: c5Start,
+                                    c6Start: c6Start,
+                                    p7Start: p7Start,
+                                    p8Start: p8Start,
+                                    f9Start: f9Start,
+                                    f9End: f9End,
                                     student: student,
                                     schoolName: schoolName,
                                     term: "Term III",
@@ -434,6 +510,7 @@ Future<void> _loadGrading() async {
                                     pobox: pobox,
                                     email: email,
                                     year: DateTime.now().year,
+                                    imageUrl: imageUrl
                                   );
                                 },
                               );

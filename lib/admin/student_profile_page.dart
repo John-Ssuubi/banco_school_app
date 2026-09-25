@@ -1,8 +1,13 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
+import 'dart:io' show File;
+import 'dart:typed_data';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class StudentProfilePage extends StatefulWidget {
   final String schoolId;
@@ -28,6 +33,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
   bool loading = true;
   bool isEditing = false;
   bool isSaving = false;
+  bool isUploadingImage = false;
   late AnimationController _animationController;
 
   // Controllers for editable fields
@@ -37,11 +43,16 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
   late TextEditingController _addressController;
   late TextEditingController _contactController;
   late TextEditingController _emisController;
-  
+
   // Next of Kin controllers
   late TextEditingController _nextOfKinNameController;
   late TextEditingController _nextOfKinPhoneController;
   late TextEditingController _nextOfKinEmailController;
+
+  // Image
+  String? _profileImageUrl;
+  dynamic _selectedImage; // File on mobile, XFile on web
+  Uint8List? _selectedImageBytes; // preview bytes for web (never use File() on web)
 
   @override
   void initState() {
@@ -51,7 +62,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
       duration: const Duration(milliseconds: 500),
     );
     _animationController.forward();
-    
+
     // Initialize controllers
     _studentIdController = TextEditingController();
     _birthDateController = TextEditingController();
@@ -62,7 +73,7 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
     _nextOfKinNameController = TextEditingController();
     _nextOfKinPhoneController = TextEditingController();
     _nextOfKinEmailController = TextEditingController();
-    
+
     loadStudent();
   }
 
@@ -126,6 +137,9 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
       setState(() {
         studentData = data;
         parentData = parent;
+        _profileImageUrl = data['image'] != null && data['image'] != "null" && data['image'] != "Not given"
+            ? data['image']
+            : null;
         loading = false;
       });
     } catch (e) {
@@ -134,10 +148,116 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
     }
   }
 
-  Future<void> saveStudentData() async {
-    setState(() => isSaving = true);
-    
+  Future<void> _pickImage() async {
     try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) return;
+
+      if (kIsWeb) {
+        // On web, dart:io's File() is unsupported (throws _Namespace error).
+        // Read bytes directly for both preview and upload.
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _selectedImage = pickedFile;
+          _selectedImageBytes = bytes;
+        });
+      } else {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _selectedImageBytes = null;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error picking image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String?> _uploadImageToFirebase(dynamic imageFile) async {
+    try {
+      setState(() => isUploadingImage = true);
+
+      // Create a unique filename
+      final fileName = '${widget.studentId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('Schools')
+          .child(widget.schoolId)
+          .child('Years')
+          .child(widget.year)
+          .child(widget.classModel)
+          .child(widget.studentId)
+          .child('profile')
+          .child(fileName);
+
+      if (kIsWeb) {
+        // Use the bytes we already read in _pickImage — avoids touching dart:io.
+        Uint8List? bytes = _selectedImageBytes;
+        bytes ??= await (imageFile as XFile).readAsBytes();
+        final uploadTask = await storageRef.putData(
+          bytes,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else if (imageFile is File) {
+        // Mobile / desktop
+        final uploadTask = await storageRef.putFile(imageFile);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      } else if (imageFile is XFile) {
+        // Fallback: shouldn't normally hit this on mobile, but handle gracefully
+        final bytes = await imageFile.readAsBytes();
+        final uploadTask = await storageRef.putData(bytes);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+        return downloadUrl;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint("Error uploading image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
+    } finally {
+      setState(() => isUploadingImage = false);
+    }
+  }
+
+  Future<void> _removeImage() async {
+    try {
+      if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+        // Delete from Firebase Storage
+        try {
+          final storageRef = FirebaseStorage.instance.refFromURL(_profileImageUrl!);
+          await storageRef.delete();
+        } catch (e) {
+          debugPrint("Error deleting image from storage: $e");
+          // Continue even if delete fails (image might already be deleted)
+        }
+      }
+
+      // Update Firestore
       final schoolRef = FirebaseFirestore.instance
           .collection('Schools')
           .doc(widget.schoolId);
@@ -148,7 +268,71 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
           .collection(widget.classModel)
           .doc(widget.studentId)
           .update({
-        'idNin': _studentIdController.text.trim(),
+        'image': 'Not given',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        _profileImageUrl = null;
+        _selectedImage = null;
+        _selectedImageBytes = null;
+        if (studentData != null) {
+          studentData!['image'] = 'Not given';
+        }
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture removed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error removing image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to remove profile picture: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> saveStudentData() async {
+    setState(() => isSaving = true);
+
+    try {
+      String? imageUrl = _profileImageUrl;
+
+      // Upload new image if selected
+      if (_selectedImage != null) {
+        final uploadedUrl = await _uploadImageToFirebase(_selectedImage);
+        if (uploadedUrl != null) {
+          imageUrl = uploadedUrl;
+        } else {
+          // If upload failed, show error and return
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload image'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() => isSaving = false);
+          return;
+        }
+      }
+
+      final schoolRef = FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId);
+
+      final updateData = {
         'birthDate': _birthDateController.text.trim(),
         'nationality': _nationalityController.text.trim(),
         'address': _addressController.text.trim(),
@@ -158,11 +342,22 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
         'nextofKincontactNumberWhatsApp': _nextOfKinPhoneController.text.trim(),
         'nextofKinidEmail': _nextOfKinEmailController.text.trim(),
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      };
+
+      // Only update image if we have a new URL
+      if (imageUrl != null && imageUrl != _profileImageUrl) {
+        updateData['image'] = imageUrl;
+      }
+
+      await schoolRef
+          .collection('Years')
+          .doc(widget.year)
+          .collection(widget.classModel)
+          .doc(widget.studentId)
+          .update(updateData);
 
       // Update local data
       setState(() {
-        studentData!['idNin'] = _studentIdController.text.trim();
         studentData!['birthDate'] = _birthDateController.text.trim();
         studentData!['nationality'] = _nationalityController.text.trim();
         studentData!['address'] = _addressController.text.trim();
@@ -171,38 +366,49 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
         studentData!['nextofKinName'] = _nextOfKinNameController.text.trim();
         studentData!['nextofKincontactNumberWhatsApp'] = _nextOfKinPhoneController.text.trim();
         studentData!['nextofKinidEmail'] = _nextOfKinEmailController.text.trim();
+        if (imageUrl != null && imageUrl != _profileImageUrl) {
+          studentData!['image'] = imageUrl;
+          _profileImageUrl = imageUrl;
+        }
+        _selectedImage = null;
+        _selectedImageBytes = null;
         isEditing = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Text('Profile updated successfully'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('Profile updated successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.error, color: Colors.white, size: 20),
-              SizedBox(width: 12),
-              Text('Failed to update profile'),
-            ],
+      debugPrint("Error saving profile: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('Failed to update profile: ${e.toString()}'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+        );
+      }
     } finally {
       setState(() => isSaving = false);
     }
@@ -214,35 +420,37 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     bool enabled = true,
+    bool readOnly = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isEditing ? Colors.white : Colors.grey[50],
+          color: readOnly ? Colors.grey[100] : (isEditing ? Colors.white : Colors.grey[50]),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isEditing ? mainColor : Colors.grey[200]!,
-            width: isEditing ? 1.5 : 1,
+            color: readOnly ? Colors.grey[300]! : (isEditing ? mainColor : Colors.grey[200]!),
+            width: readOnly ? 1 : (isEditing ? 1.5 : 1),
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: mainColor),
+            Icon(icon, size: 20, color: readOnly ? Colors.grey : mainColor),
             const SizedBox(width: 12),
             SizedBox(
               width: 120,
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
+                  color: readOnly ? Colors.grey[600] : Colors.black,
                 ),
               ),
             ),
             Expanded(
-              child: isEditing
+              child: isEditing && !readOnly
                   ? TextFormField(
                       controller: controller,
                       keyboardType: keyboardType,
@@ -256,13 +464,19 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
                       ),
                     )
                   : Text(
-                      controller.text.isEmpty ? "Not provided" : controller.text,
-                      style: const TextStyle(
+                      controller.text.isEmpty || controller.text == "Not given" ? "Not provided" : controller.text,
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: readOnly ? Colors.grey[600] : Colors.black87,
                       ),
                     ),
             ),
+            if (readOnly)
+              Icon(
+                Icons.lock_outline,
+                size: 16,
+                color: Colors.grey[400],
+              ),
           ],
         ),
       ),
@@ -348,9 +562,30 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
     );
   }
 
+  /// Resolves the correct ImageProvider for the current state, without ever
+  /// constructing a dart:io File() on web (which throws _Namespace errors).
+  ImageProvider? _resolveProfileImageProvider(bool hasImage) {
+    if (_selectedImage != null) {
+      if (kIsWeb) {
+        return _selectedImageBytes != null ? MemoryImage(_selectedImageBytes!) : null;
+      }
+      if (_selectedImage is File) {
+        return FileImage(_selectedImage as File);
+      }
+      return null;
+    }
+    if (hasImage) {
+      return NetworkImage(_profileImageUrl!);
+    }
+    return null;
+  }
+
   Widget _buildProfileHeader() {
-    final hasImage = studentData!['image'] != null && studentData!['image'] != "null";
-    
+    final hasImage = _selectedImage != null ||
+        (_profileImageUrl != null && _profileImageUrl!.isNotEmpty && _profileImageUrl != "null" && _profileImageUrl != "Not given");
+
+    final imageProvider = _resolveProfileImageProvider(hasImage);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -369,41 +604,103 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
         children: [
           Stack(
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: mainColor.withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 65,
-                  backgroundColor: mainColor.withOpacity(0.2),
-                  backgroundImage: hasImage
-                      ? NetworkImage(studentData!['image'])
-                      : null,
-                  child: !hasImage
-                      ? Icon(Icons.person, size: 65, color: mainColor)
-                      : null,
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
+              // Profile Image
+              GestureDetector(
+                onTap: isEditing ? _pickImage : null,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.green,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: mainColor.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 16),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 65,
+                        backgroundColor: mainColor.withOpacity(0.2),
+                        backgroundImage: imageProvider,
+                        child: imageProvider == null
+                            ? Icon(Icons.person, size: 65, color: mainColor)
+                            : null,
+                      ),
+                      if (isEditing && !isUploadingImage)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: mainColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      if (isUploadingImage)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
+              // Remove image button (only in edit mode and when image exists)
+              if (isEditing && hasImage && !isUploadingImage)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _removeImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              // Status indicator
+              if (!isEditing && hasImage)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(Icons.check, color: Colors.white, size: 16),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -452,6 +749,17 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
               ),
             ],
           ),
+          if (isEditing) ...[
+            const SizedBox(height: 8),
+            Text(
+              "Tap on the profile picture to change it",
+              style: TextStyle(
+                fontSize: 12,
+                color: mainColor,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -466,7 +774,8 @@ class _StudentProfilePageState extends State<StudentProfilePage> with SingleTick
           title: "Student ID",
           controller: _studentIdController,
           icon: Icons.tag,
-          enabled: isEditing,
+          enabled: false,
+          readOnly: true,
         ),
         _buildEditableField(
           title: "Birth Date",
