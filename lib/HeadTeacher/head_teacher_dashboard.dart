@@ -10,6 +10,7 @@ import 'package:banco_mobile/HeadTeacher/headteacher_stat.dart';
 import 'package:banco_mobile/HeadTeacher/headteachernotificatios.dart';
 import 'package:banco_mobile/HeadTeacher/staff_members.dart';
 import 'package:banco_mobile/Notifications/local_notifications.dart';
+import 'package:banco_mobile/Planning/schemes_of_work.dart';
 import 'package:banco_mobile/Teachers/SettingsTeacher/settings_teacher.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -44,6 +45,10 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
+  // ─────────────────────────────────────────────────────────────
+  // QUICK ACTIONS
+  // (Results, Fees, Attendance, Notifications, Inventory, Library, Transport)
+  // ─────────────────────────────────────────────────────────────
   final List<DashboardItem> menuItems = [
     DashboardItem(
       title: 'Results',
@@ -58,7 +63,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     ),
     DashboardItem(
       title: 'School Fees',
-      subtitle: 'View school fees balance',
+      subtitle: 'View fees balance',
       icon: Icons.account_balance_outlined,
       color: const Color(0xFF00897B),
       gradient: const LinearGradient(
@@ -89,28 +94,30 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
         colors: [Color(0xFFE53935), Color(0xFFC62828)],
       ),
     ),
+    // ── NEW ──
     DashboardItem(
-      title: 'Statistics',
-      subtitle: 'Performance insights',
-      icon: Icons.bar_chart_rounded,
-      color: const Color(0xFF8E24AA),
+      title: 'Inventory',
+      subtitle: 'Manage school stock',
+      icon: Icons.inventory_2_rounded,
+      color: const Color(0xFF6D4C41),
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF8E24AA), Color(0xFF6A1B9A)],
+        colors: [Color(0xFF8D6E63), Color(0xFF4E342E)],
       ),
     ),
     DashboardItem(
-      title: 'Assessment',
-      subtitle: 'Evaluate & review',
-      icon: Icons.fact_check_rounded,
-      color: const Color(0xFFF57C00),
+      title: 'Library',
+      subtitle: 'Books & resources',
+      icon: Icons.local_library_rounded,
+      color: const Color(0xFF3949AB),
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFFF57C00), Color(0xFFE65100)],
+        colors: [Color(0xFF5C6BC0), Color(0xFF283593)],
       ),
     ),
+   
   ];
 
   Future<void> loadData() async {
@@ -419,7 +426,73 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
       ],
     );
   }
+void _openSchemesOfWork(BuildContext context) {
+  // If only one class, go straight in. Else show a picker.
+  final classes = schoolClasses ?? [];
+  if (classes.isEmpty) {
+    _snack(context, 'No classes linked to your account');
+    return;
+  }
+  if (classes.length == 1) {
+    _navToSchemes(context, classes.first);
+    return;
+  }
 
+  // Bottom sheet class picker
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select a class',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            ...classes.map(
+              (c) => ListTile(
+                leading: Icon(Icons.school_rounded, color: mainColor),
+                title: Text(c['className'] ?? ''),
+                onTap: () {
+                  Navigator.pop(context);
+                  _navToSchemes(context, c);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _navToSchemes(BuildContext context, Map<String, dynamic> cls) {
+  if (!_isLargeScreen) Navigator.pop(context);
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => SchemesOfWorkScreen(
+        schoolId: widget.schoolId,
+        classId: cls['classId'] ?? '',
+        className: cls['className'] ?? '',
+        teacherUid: FirebaseAuth.instance.currentUser?.uid ?? '',
+        teacherName: 'Head Teacher',
+        role: 'headteacher',
+      ),
+    ),
+  );
+}
+  // ─────────────────────────────────────────────────────────────
+  // DRAWER
+  // ─────────────────────────────────────────────────────────────
   Widget _buildDrawer() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -448,6 +521,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   children: [
+                    // ================= NAVIGATION =================
                     _buildDrawerSection("NAVIGATION"),
                     _buildDrawerItem(
                       icon: Icons.dashboard_rounded,
@@ -471,9 +545,189 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                       },
                     ),
                     _buildAboutSchoolItem(userSchoolId, context),
+
                     const SizedBox(height: 8),
                     Divider(color: Colors.grey.shade100, height: 1),
                     const SizedBox(height: 8),
+
+                    // ================= ACADEMICS =================
+                    _buildDrawerSection("ACADEMICS"),
+
+                    // ---- PLANNING ----
+                    _buildDrawerGroup(
+                      icon: Icons.event_note_rounded,
+                      title: 'Planning',
+                      color: const Color(0xFF00695C),
+                      children: [
+                        _buildSubItem(
+                          icon: Icons.description_outlined,
+                          title: 'Schemes of Work',
+                            onTap: () => _openSchemesOfWork(context),
+                        ),
+                       
+                        _buildSubItem(
+                          icon: Icons.menu_book_rounded,
+                          title: 'Lesson Plans',
+                          onTap: () => _snack(context, 'Lesson Plans'),
+                        ),
+                        _buildSubItem(
+                          icon: Icons.schedule_rounded,
+                          title: 'Timetables',
+                          onTap: () => _snack(context, 'Timetables'),
+                        ),
+                      ],
+                    ),
+
+                    // ---- SCHEDULING ----
+                    _buildDrawerGroup(
+                      icon: Icons.calendar_month_rounded,
+                      title: 'Scheduling',
+                      color: const Color(0xFF1E88E5),
+                      children: [
+                        _buildSubItem(
+                          icon: Icons.supervisor_account_rounded,
+                          title: 'Supervision Record',
+                          onTap: () => _snack(context, 'Supervision Record'),
+                        ),
+                      ],
+                    ),
+
+                    // ---- ASSESSMENT ----
+                    _buildDrawerGroup(
+                      icon: Icons.assignment_turned_in_rounded,
+                      title: 'Assessment',
+                      color: const Color(0xFFF57C00),
+                      children: [
+                        // ✅ NOW NAVIGATES TO HeadteacherAssessment
+                        _buildSubItem(
+                          icon: Icons.grading_rounded,
+                          title: 'Marksheets (Exams)',
+                          onTap: () {
+                            if (!_isLargeScreen) Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HeadteacherAssessment(
+                                  classes: widget.classes,
+                                  approve: widget.approve,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildSubItem(
+                          icon: Icons.fact_check_outlined,
+                          title: 'Marksheets (CA)',
+                          onTap: () => _snack(context, 'Marksheets (CA)'),
+                        ),
+                        _buildSubItem(
+                          icon: Icons.psychology_outlined,
+                          title: 'Conduct of Learner',
+                          onTap: () => _snack(context, 'Conduct of Learner'),
+                        ),
+                      ],
+                    ),
+
+                    // ---- REPORTS ----
+                    _buildDrawerGroup(
+                      icon: Icons.assessment_rounded,
+                      title: 'Reports',
+                      color: const Color(0xFF8E24AA),
+                      children: [
+                        _buildSubItem(
+                          icon: Icons.card_membership_rounded,
+                          title: 'Report Card (Academics)',
+                          onTap: () =>
+                              _snack(context, 'Report Card (Academics)'),
+                        ),
+                        _buildSubItem(
+                          icon: Icons.stars_rounded,
+                          title: 'Report Card (Skills)',
+                          onTap: () => _snack(context, 'Report Card (Skills)'),
+                        ),
+                        // ✅ NOW NAVIGATES TO HeadteacherStat
+                        _buildSubItem(
+                          icon: Icons.insights_rounded,
+                          title: 'Academic Statistics',
+                          onTap: () {
+                            if (!_isLargeScreen) Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HeadteacherStat(
+                                  classes: widget.classes,
+                                  approve: widget.approve,
+                                  schoolId: widget.schoolId,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
+                    // ---- PROJECTS ----
+                    _buildDrawerGroup(
+                      icon: Icons.school_rounded,
+                      title: 'Projects',
+                      color: const Color(0xFFE53935),
+                      children: [
+                        _buildSubItem(
+                          icon: Icons.folder_special_rounded,
+                          title: 'Project Work Records',
+                          onTap: () =>
+                              _snack(context, 'Project Work Records'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+                    Divider(color: Colors.grey.shade100, height: 1),
+                    const SizedBox(height: 8),
+
+                    // ================= OPERATIONS =================
+                    _buildDrawerSection("OPERATIONS"),
+
+                    _buildDrawerItem(
+                      icon: Icons.inventory_2_rounded,
+                      title: 'Inventory Management',
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                        _snack(context, 'Inventory Management');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.local_library_rounded,
+                      title: 'Library',
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                        _snack(context, 'Library');
+                      },
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.directions_bus_rounded,
+                      title: 'Transport',
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                        _snack(context, 'Transport');
+                      },
+                    ),
+
+                    // ---- ELECTIONS (drawer only) ----
+                    _buildDrawerItem(
+                      icon: Icons.how_to_vote_rounded,
+                      title: 'Elections',
+                      onTap: () {
+                        if (!_isLargeScreen) Navigator.pop(context);
+                        _snack(context, 'Elections');
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+                    Divider(color: Colors.grey.shade100, height: 1),
+                    const SizedBox(height: 8),
+
+                    // ================= ACCOUNT =================
                     _buildDrawerSection("ACCOUNT"),
                     _buildDrawerItem(
                       icon: Icons.logout_rounded,
@@ -508,6 +762,85 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           ),
         );
       },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // DRAWER HELPERS
+  // ─────────────────────────────────────────────────────────────
+
+  Widget _buildDrawerGroup({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required List<Widget> children,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+        childrenPadding: const EdgeInsets.only(left: 8, bottom: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF2D3748),
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        iconColor: color,
+        collapsedIconColor: Colors.grey.shade500,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildSubItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.grey.shade600),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _snack(BuildContext context, String label) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label — coming soon'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
@@ -753,6 +1086,9 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // DASHBOARD CONTENT
+  // ─────────────────────────────────────────────────────────────
   Widget _buildDashboardContent() {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -769,7 +1105,6 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                   schoolSnapshot.data!.data() as Map<String, dynamic>? ?? {};
               return _buildHeroHeader(
                 schoolName: data['school_name'] ?? '',
-                schoolMoto: data['moto'] ?? '',
               );
             },
           ),
@@ -806,9 +1141,11 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // HERO HEADER (with NOW TEACHING card)
+  // ─────────────────────────────────────────────────────────────
   Widget _buildHeroHeader({
     required String schoolName,
-    required String schoolMoto,
   }) {
     final now = DateTime.now();
     final greeting = now.hour < 12
@@ -817,6 +1154,13 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
         ? "Good Afternoon"
         : "Good Evening";
     final dateStr = DateFormat('EEEE, MMMM d').format(now);
+
+    // Design-only placeholders — swap with Firestore later
+    const currentSubject = 'Biology';
+    const currentTeacher = 'Mr. Okello';
+    const currentClass = 'Form 2A';
+    const currentRoom = 'Lab 1';
+    const periodLabel = 'Period 3 · 10:20 – 11:00';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -922,57 +1266,139 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (schoolMoto.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '"$schoolMoto"',
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
                 const SizedBox(height: 20),
+
+                // ── NOW TEACHING CARD ──
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withOpacity(0.20),
                       width: 1,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF69F0AE),
-                          shape: BoxShape.circle,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF69F0AE),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            "NOW TEACHING",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            periodLabel,
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        "System Online",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.science_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  currentSubject,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "$currentTeacher  ·  $currentClass",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildInfoChip(
+                            icon: Icons.meeting_room_rounded,
+                            label: currentRoom,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildInfoChip(
+                            icon: Icons.people_alt_rounded,
+                            label: '32 learners',
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white70, size: 13),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -1156,6 +1582,9 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // QUICK ACTION NAVIGATION
+  // ─────────────────────────────────────────────────────────────
   void _navigateToMenuItem(DashboardItem item) {
     switch (item.title) {
       case 'Results':
@@ -1173,9 +1602,7 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => SchoolFees(
-             
-            ),
+            builder: (context) => SchoolFees(),
           ),
         );
         break;
@@ -1197,28 +1624,15 @@ class _HeadTeacherDashboardState extends State<HeadTeacherDashboard>
           ),
         );
         break;
-      case 'Statistics':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HeadteacherStat(
-              classes: widget.classes,
-              approve: widget.approve,
-              schoolId: widget.schoolId,
-            ),
-          ),
-        );
+      // ── NEW Quick Actions ──
+      case 'Inventory':
+        _snack(context, 'Inventory Management');
         break;
-      case 'Assessment':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HeadteacherAssessment(
-              classes: widget.classes,
-              approve: widget.approve,
-            ),
-          ),
-        );
+      case 'Library':
+        _snack(context, 'Library');
+        break;
+      case 'Transport':
+        _snack(context, 'Transport');
         break;
     }
   }

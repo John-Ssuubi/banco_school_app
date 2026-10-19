@@ -4,6 +4,7 @@ import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/editable_score_field.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -36,6 +37,7 @@ class _TermThreeState extends State<TermThree> {
   int f9Start = 0, f9End = 0;
 
   bool gradingLoaded = false;
+  String? _logoUrl;
 
   Future<void> _loadGrading() async {
     try {
@@ -78,6 +80,29 @@ class _TermThreeState extends State<TermThree> {
       setState(() {
         gradingLoaded = true;
       });
+
+      String? resolvedLogo;
+      final storedLogo = data['logoUrl'] as String?;
+      if (storedLogo != null && storedLogo.trim().isNotEmpty) {
+        resolvedLogo = storedLogo.trim();
+      } else {
+        try {
+          resolvedLogo = await FirebaseStorage.instance
+              .ref()
+              .child('schools/${widget.schoolId}/logo.jpg')
+              .getDownloadURL();
+        } catch (_) {
+          resolvedLogo = null;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _logoUrl = resolvedLogo;
+        gradingLoaded = true;
+      });
+
+
     } catch (e) {
       if (kDebugMode) {
         print("Error loading grading: $e");
@@ -510,7 +535,8 @@ class _TermThreeState extends State<TermThree> {
                                     pobox: pobox,
                                     email: email,
                                     year: DateTime.now().year,
-                                    imageUrl: imageUrl
+                                    imageUrl: imageUrl,
+                                    logoUrl: _logoUrl
                                   );
                                 },
                               );

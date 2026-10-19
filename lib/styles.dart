@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-Color mainColor = const Color.fromARGB(255, 2, 48, 116);
+Color mainColor = const Color.fromARGB(255, 124, 11, 139);
 double largefonts = 30;
 double normalFontSize = 20;
 

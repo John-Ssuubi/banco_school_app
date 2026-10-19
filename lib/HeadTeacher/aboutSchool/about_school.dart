@@ -85,6 +85,10 @@ class _AboutSchoolState extends State<AboutSchool>
   bool isLoadingImages = true;
   bool isUploading = false;
 
+  // Logo state
+  String? _logoUrl;
+  bool _isUploadingLogo = false;
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +96,7 @@ class _AboutSchoolState extends State<AboutSchool>
     _tabController = TabController(length: 4, vsync: this);
 
     _loadSchoolImages();
+    _loadSchoolLogo();
   }
 
   @override
@@ -100,7 +105,131 @@ class _AboutSchoolState extends State<AboutSchool>
     super.dispose();
   }
 
-  // LOAD SCHOOL IMAGES
+  // ============================================================
+  // LOAD SCHOOL LOGO
+  // ============================================================
+
+  Future<void> _loadSchoolLogo() async {
+    try {
+      // Try Firestore first (preferred — stores the URL).
+      final doc = await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .get();
+
+      final data = doc.data();
+      final storedUrl = data?['logoUrl'] as String?;
+
+      if (storedUrl != null && storedUrl.trim().isNotEmpty) {
+        if (!mounted) return;
+        setState(() => _logoUrl = storedUrl.trim());
+        return;
+      }
+
+      // Fallback: look in Storage under schools/<id>/logo.jpg
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('schools/${widget.schoolId}/logo.jpg');
+
+      final url = await storageRef.getDownloadURL();
+
+      if (!mounted) return;
+      setState(() => _logoUrl = url);
+    } catch (_) {
+      // No logo — leave null so the add-logo icon is shown.
+      if (!mounted) return;
+      setState(() => _logoUrl = null);
+    }
+  }
+
+  // ============================================================
+  // UPLOAD SCHOOL LOGO
+  // ============================================================
+
+  Future<void> _uploadSchoolLogo() async {
+    final picker = ImagePicker();
+
+    XFile? image;
+
+    try {
+      image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking logo: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (image == null) return;
+
+    if (!mounted) return;
+    setState(() => _isUploadingLogo = true);
+
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('schools/${widget.schoolId}/logo.jpg');
+
+      final bytes = await image.readAsBytes();
+
+      await storageRef.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // Persist URL on the school document.
+      await FirebaseFirestore.instance
+          .collection('Schools')
+          .doc(widget.schoolId)
+          .set({'logoUrl': downloadUrl}, SetOptions(merge: true));
+
+      if (!mounted) return;
+
+      setState(() {
+        _logoUrl = downloadUrl;
+        _isUploadingLogo = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Logo uploaded successfully!'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Logo upload error: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
+      if (!mounted) return;
+
+      setState(() => _isUploadingLogo = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Failed to upload logo: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  // ============================================================
+  // LOAD SCHOOL IMAGES (gallery)
+  // ============================================================
 
   void openFullScreenImage(String imageUrl) {
     Navigator.of(context).push(
@@ -119,9 +248,7 @@ class _AboutSchoolState extends State<AboutSchool>
 
   Future<void> _loadSchoolImages() async {
     if (mounted) {
-      setState(() {
-        isLoadingImages = true;
-      });
+      setState(() => isLoadingImages = true);
     }
 
     try {
@@ -137,7 +264,6 @@ class _AboutSchoolState extends State<AboutSchool>
 
       for (final doc in snapshot.docs) {
         final data = doc.data();
-
         final url = data['url'];
 
         if (url is String && url.trim().isNotEmpty) {
@@ -151,10 +277,6 @@ class _AboutSchoolState extends State<AboutSchool>
         }
       }
 
-      // Sort locally instead of using Firestore orderBy().
-      //
-      // This avoids problems if some old gallery documents
-      // don't contain createdAt.
       images.sort((a, b) {
         final aTime = a['createdAt'];
         final bTime = b['createdAt'];
@@ -162,21 +284,13 @@ class _AboutSchoolState extends State<AboutSchool>
         if (aTime is Timestamp && bTime is Timestamp) {
           return bTime.compareTo(aTime);
         }
-
-        if (aTime is Timestamp) {
-          return -1;
-        }
-
-        if (bTime is Timestamp) {
-          return 1;
-        }
-
+        if (aTime is Timestamp) return -1;
+        if (bTime is Timestamp) return 1;
         return 0;
       });
 
-      final imageUrls = images
-          .map<String>((image) => image['url'] as String)
-          .toList();
+      final imageUrls =
+          images.map<String>((image) => image['url'] as String).toList();
 
       if (!mounted) return;
 
@@ -186,7 +300,6 @@ class _AboutSchoolState extends State<AboutSchool>
       });
     } catch (e, stackTrace) {
       debugPrint('Error loading school images from Firestore: $e');
-
       debugPrintStack(stackTrace: stackTrace);
 
       if (!mounted) return;
@@ -210,13 +323,7 @@ class _AboutSchoolState extends State<AboutSchool>
   // IMAGE PICKER SUPPORT
   // ============================================================
 
-  /// image_picker supports the platforms used by this app.
-  ///
-  /// We intentionally don't import dart:io because Flutter Web
-  /// does not support dart:io.
-  bool _isImagePickerSupported() {
-    return true;
-  }
+  bool _isImagePickerSupported() => true;
 
   // ============================================================
   // UPLOAD SCHOOL IMAGE
@@ -241,7 +348,6 @@ class _AboutSchoolState extends State<AboutSchool>
       );
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error picking image: $e'),
@@ -249,54 +355,41 @@ class _AboutSchoolState extends State<AboutSchool>
           behavior: SnackBarBehavior.floating,
         ),
       );
-
       return;
     }
 
     if (image == null) return;
 
     if (!mounted) return;
-
-    setState(() {
-      isUploading = true;
-    });
+    setState(() => isUploading = true);
 
     try {
-      // Generate unique file name.
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Firebase Storage location.
       final storageRef = FirebaseStorage.instance.ref().child(
-        'schools/${widget.schoolId}/gallery/$fileName',
-      );
+            'schools/${widget.schoolId}/gallery/$fileName',
+          );
 
-      // Read image as bytes.
-      //
-      // This works on Flutter Web and mobile.
       final bytes = await image.readAsBytes();
 
-      // Upload bytes directly.
       await storageRef.putData(
         bytes,
         SettableMetadata(contentType: 'image/jpeg'),
       );
 
-      // Get Firebase Storage download URL.
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // Save URL in Firestore.
       final galleryDoc = await FirebaseFirestore.instance
           .collection('Schools')
           .doc(widget.schoolId)
           .collection('gallery')
           .add({
-            'url': downloadUrl,
-            'fileName': fileName,
-            'storagePath': storageRef.fullPath,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+        'url': downloadUrl,
+        'fileName': fileName,
+        'storagePath': storageRef.fullPath,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-      // Keep document ID for deletion.
       _imageDocumentIds[downloadUrl] = galleryDoc.id;
 
       if (!mounted) return;
@@ -315,14 +408,10 @@ class _AboutSchoolState extends State<AboutSchool>
       );
     } catch (e, stackTrace) {
       debugPrint('Upload error: $e');
-
       debugPrintStack(stackTrace: stackTrace);
 
       if (!mounted) return;
-
-      setState(() {
-        isUploading = false;
-      });
+      setState(() => isUploading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -340,21 +429,11 @@ class _AboutSchoolState extends State<AboutSchool>
 
   Future<void> _deleteSchoolImage(String imageUrl) async {
     final shouldDelete = await _confirmDeleteImage();
-
     if (!shouldDelete) return;
 
     try {
-      // ========================================================
-      // 1. DELETE FROM FIREBASE STORAGE
-      // ========================================================
-
       final storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
-
       await storageRef.delete();
-
-      // ========================================================
-      // 2. DELETE FIRESTORE GALLERY DOCUMENT
-      // ========================================================
 
       final documentId = _imageDocumentIds[imageUrl];
 
@@ -368,7 +447,6 @@ class _AboutSchoolState extends State<AboutSchool>
 
         _imageDocumentIds.remove(imageUrl);
       } else {
-        // Fallback search by URL.
         final snapshot = await FirebaseFirestore.instance
             .collection('Schools')
             .doc(widget.schoolId)
@@ -382,15 +460,9 @@ class _AboutSchoolState extends State<AboutSchool>
         }
       }
 
-      // ========================================================
-      // 3. REMOVE FROM UI
-      // ========================================================
-
       if (!mounted) return;
 
-      setState(() {
-        schoolImages.remove(imageUrl);
-      });
+      setState(() => schoolImages.remove(imageUrl));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -401,7 +473,6 @@ class _AboutSchoolState extends State<AboutSchool>
       );
     } catch (e, stackTrace) {
       debugPrint('Delete image error: $e');
-
       debugPrintStack(stackTrace: stackTrace);
 
       if (!mounted) return;
@@ -457,11 +528,8 @@ class _AboutSchoolState extends State<AboutSchool>
               ),
               title: const Row(
                 children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.red,
-                    size: 28,
-                  ),
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.red, size: 28),
                   SizedBox(width: 12),
                   Text('Delete Image'),
                 ],
@@ -541,18 +609,14 @@ class _AboutSchoolState extends State<AboutSchool>
               ),
               title: const Row(
                 children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.red,
-                    size: 28,
-                  ),
+                  Icon(Icons.warning_amber_rounded,
+                      color: Colors.red, size: 28),
                   SizedBox(width: 12),
                   Text('Confirm Delete'),
                 ],
               ),
               content: Text(
-                "Remove $type '$name'? "
-                'This action cannot be undone.',
+                "Remove $type '$name'? This action cannot be undone.",
               ),
               actions: [
                 TextButton(
@@ -813,7 +877,14 @@ class _AboutSchoolState extends State<AboutSchool>
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          buildHeaderCard(widget.schoolName, widget.moto, widget.subscription),
+          buildHeaderCard(
+            widget.schoolName,
+            widget.moto,
+            widget.subscription,
+            logoUrl: _logoUrl,
+            onAddLogo: _uploadSchoolLogo,
+            isUploadingLogo: _isUploadingLogo,
+          ),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -833,7 +904,6 @@ class _AboutSchoolState extends State<AboutSchool>
                 ),
                 _buildStaffTab(),
                 _buildParentsTab(),
-                
               ],
             ),
           ),
@@ -892,7 +962,6 @@ class _AboutSchoolState extends State<AboutSchool>
                 builder: (context) => SchoolSettings(
                   schoolId: widget.schoolId,
                   schoolName: widget.schoolName,
-               
                 ),
               ),
             );
@@ -935,7 +1004,7 @@ class _AboutSchoolState extends State<AboutSchool>
           Tab(icon: Icon(Icons.photo_library), text: 'Gallery'),
           Tab(icon: Icon(Icons.people_outline), text: 'Staff'),
           Tab(icon: Icon(Icons.family_restroom), text: 'Parents'),
-          ],
+        ],
       ),
     );
   }
@@ -986,24 +1055,16 @@ class _AboutSchoolState extends State<AboutSchool>
     return Image.network(
       imageUrl,
       fit: BoxFit.cover,
-
-      // Important for Flutter Web.
       webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
-
       loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          return child;
-        }
-
+        if (loadingProgress == null) return child;
         return Container(
           color: Colors.grey[200],
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         );
       },
-
       errorBuilder: (context, error, stackTrace) {
         debugPrint('Image load failed for $imageUrl');
-
         debugPrint('Image error: $error');
 
         return Container(
@@ -1065,7 +1126,8 @@ class _AboutSchoolState extends State<AboutSchool>
       padding: const EdgeInsets.all(16),
       itemCount: widget.linkedParents.length,
       itemBuilder: (context, index) {
-        return buildParentCard(widget.linkedParents[index], _showParentOptions);
+        return buildParentCard(
+            widget.linkedParents[index], _showParentOptions);
       },
     );
   }

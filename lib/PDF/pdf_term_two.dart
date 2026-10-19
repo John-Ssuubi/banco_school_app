@@ -28,6 +28,7 @@ class ReportCardPdfTermII {
     required int f9Start,
     required int f9End,
     String? imageUrl,
+    required String? logoUrl,
   }) async {
     final pdf = pw.Document();
 
@@ -41,8 +42,6 @@ class ReportCardPdfTermII {
     final String currentYear = DateTime.now().year.toString();
 
     // ─── Fetch the student photo BEFORE building the page ─────────────────────
-    // pw.Page.build is synchronous, so any async work (network fetch) must
-    // happen up front and the resolved ImageProvider passed in.
     final hasImage = imageUrl != null &&
         imageUrl.isNotEmpty &&
         imageUrl != 'null' &&
@@ -55,6 +54,17 @@ class ReportCardPdfTermII {
       } catch (e) {
         if (kDebugMode) print('Failed to load student image: $e');
         studentImage = null;
+      }
+    }
+
+    // ─── Fetch the school logo BEFORE building the page ───────────────────────
+    pw.ImageProvider? logoImage;
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      try {
+        logoImage = await networkImage(logoUrl);
+      } catch (e) {
+        if (kDebugMode) print('Failed to load school logo: $e');
+        logoImage = null;
       }
     }
 
@@ -74,7 +84,6 @@ class ReportCardPdfTermII {
       ),
     );
 
-    /// Table header cell
     pw.Widget th(String text) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 5),
       child: pw.Text(
@@ -88,7 +97,6 @@ class ReportCardPdfTermII {
       ),
     );
 
-    /// Normal data cell (left-aligned)
     pw.Widget td(String text) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: pw.Text(
@@ -97,7 +105,6 @@ class ReportCardPdfTermII {
       ),
     );
 
-    /// Centre-aligned data cell
     pw.Widget tdCenter(String text) => pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: pw.Text(
@@ -107,17 +114,16 @@ class ReportCardPdfTermII {
       ),
     );
 
-    /// Grade cell – colour-coded by grade letter
     pw.Widget tdGrade(String label) {
       PdfColor bg;
       if (label.startsWith('D')) {
-        bg = const PdfColor.fromInt(0xFFD4EDDA); // green tint
+        bg = const PdfColor.fromInt(0xFFD4EDDA);
       } else if (label.startsWith('C')) {
-        bg = const PdfColor.fromInt(0xFFFFF3CD); // amber tint
+        bg = const PdfColor.fromInt(0xFFFFF3CD);
       } else if (label.startsWith('P')) {
-        bg = const PdfColor.fromInt(0xFFFFE0B2); // orange tint
+        bg = const PdfColor.fromInt(0xFFFFE0B2);
       } else {
-        bg = const PdfColor.fromInt(0xFFFFCDD2); // red tint
+        bg = const PdfColor.fromInt(0xFFFFCDD2);
       }
 
       return pw.Container(
@@ -340,7 +346,7 @@ class ReportCardPdfTermII {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              // ── Header band ──────────────────────────────────────────────
+              // ── Header band with school logo ────────────────────────────
               pw.Container(
                 decoration: const pw.BoxDecoration(
                   color: headerBlue,
@@ -350,40 +356,71 @@ class ReportCardPdfTermII {
                   vertical: 12,
                   horizontal: 16,
                 ),
-                child: pw.Column(
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text(
-                      schoolName.toString().toUpperCase(),
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      moto.toString(),
-                      style: const pw.TextStyle(color: PdfColors.white, fontSize: 9),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                      decoration: pw.BoxDecoration(
-                        color: accentGold,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      ),
-                      child: pw.Text(
-                        'TERM I PROGRESS REPORT ${DateTime.now().year}',
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                          color: textDark,
+                    if (logoImage != null) ...[
+                      pw.Container(
+                        width: 56,
+                        height: 56,
+                        padding: const pw.EdgeInsets.all(3),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: const pw.BorderRadius.all(
+                            pw.Radius.circular(6),
+                          ),
                         ),
+                        child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                      ),
+                      pw.SizedBox(width: 12),
+                    ],
+                    pw.Expanded(
+                      child: pw.Column(
+                        children: [
+                          pw.Text(
+                            schoolName.toString().toUpperCase(),
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 3),
+                          pw.Text(
+                            moto.toString(),
+                            style: const pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 6),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 3,
+                            ),
+                            decoration: pw.BoxDecoration(
+                              color: accentGold,
+                              borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(4),
+                              ),
+                            ),
+                            child: pw.Text(
+                              'TERM II PROGRESS REPORT ${DateTime.now().year}',
+                              style: pw.TextStyle(
+                                fontSize: 9,
+                                fontWeight: pw.FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    if (logoImage != null) pw.SizedBox(width: 68),
                   ],
                 ),
               ),
@@ -411,7 +448,6 @@ class ReportCardPdfTermII {
                         ],
                       ),
                     ),
-                    // ── Student Photo ─────────────────────────────────────
                     pw.Container(
                       width: 70,
                       height: 70,
@@ -440,7 +476,6 @@ class ReportCardPdfTermII {
 
               pw.SizedBox(height: 10),
 
-              // ── BOT & MID table ──────────────────────────────────────────
               sectionLabel('Beginning of Term (BOT) & Mid-Term (MID) Results'),
               pw.SizedBox(height: 4),
               pw.Table(
@@ -495,7 +530,6 @@ class ReportCardPdfTermII {
 
               pw.SizedBox(height: 10),
 
-              // ── EOT table ──────────────────────────────────────────────
               sectionLabel('End of Term (EOT) Results'),
               pw.SizedBox(height: 4),
               pw.Table(
@@ -551,7 +585,6 @@ class ReportCardPdfTermII {
 
               pw.SizedBox(height: 10),
 
-              // ── Comments section ───────────────────────────────────────
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [

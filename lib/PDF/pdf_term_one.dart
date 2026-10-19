@@ -27,7 +27,8 @@ class ReportCardPdf {
     required int p8Start,
     required int f9Start,
     required int f9End,
-    String? imageUrl,
+    required String? imageUrl,
+    required String? logoUrl,
   }) async {
     final pdf = pw.Document();
 
@@ -55,6 +56,17 @@ class ReportCardPdf {
       } catch (e) {
         if (kDebugMode) print('Failed to load student image: $e');
         studentImage = null;
+      }
+    }
+
+    // ─── Fetch the school logo BEFORE building the page ───────────────────────
+    pw.ImageProvider? logoImage;
+    if (logoUrl != null && logoUrl.isNotEmpty) {
+      try {
+        logoImage = await networkImage(logoUrl);
+      } catch (e) {
+        if (kDebugMode) print('Failed to load school logo: $e');
+        logoImage = null;
       }
     }
 
@@ -340,7 +352,7 @@ class ReportCardPdf {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
-              // ── Header band ──────────────────────────────────────────────
+              // ── Header band with school logo ────────────────────────────
               pw.Container(
                 decoration: const pw.BoxDecoration(
                   color: headerBlue,
@@ -350,40 +362,71 @@ class ReportCardPdf {
                   vertical: 12,
                   horizontal: 16,
                 ),
-                child: pw.Column(
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text(
-                      schoolName.toString().toUpperCase(),
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      moto.toString(),
-                      style: const pw.TextStyle(color: PdfColors.white, fontSize: 9),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                      decoration: pw.BoxDecoration(
-                        color: accentGold,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                      ),
-                      child: pw.Text(
-                        'TERM I PROGRESS REPORT ${DateTime.now().year}',
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                          color: textDark,
+                    if (logoImage != null) ...[
+                      pw.Container(
+                        width: 56,
+                        height: 56,
+                        padding: const pw.EdgeInsets.all(3),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: const pw.BorderRadius.all(
+                            pw.Radius.circular(6),
+                          ),
                         ),
+                        child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                      ),
+                      pw.SizedBox(width: 12),
+                    ],
+                    pw.Expanded(
+                      child: pw.Column(
+                        children: [
+                          pw.Text(
+                            schoolName.toString().toUpperCase(),
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 3),
+                          pw.Text(
+                            moto.toString(),
+                            style: const pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 9,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 6),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 3,
+                            ),
+                            decoration: pw.BoxDecoration(
+                              color: accentGold,
+                              borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(4),
+                              ),
+                            ),
+                            child: pw.Text(
+                              'TERM I PROGRESS REPORT ${DateTime.now().year}',
+                              style: pw.TextStyle(
+                                fontSize: 9,
+                                fontWeight: pw.FontWeight.bold,
+                                color: textDark,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    if (logoImage != null) pw.SizedBox(width: 68),
                   ],
                 ),
               ),

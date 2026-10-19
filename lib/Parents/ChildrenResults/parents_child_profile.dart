@@ -3,21 +3,27 @@ import 'package:banco_mobile/PDF/pdf_term_one.dart';
 import 'package:banco_mobile/division_cal.dart';
 import 'package:banco_mobile/styles.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 // ignore: must_be_immutable
 class ParentsChildProfileTerm1 extends StatefulWidget {
-    final String schoolId;
+  final String schoolId;
   Stream<QuerySnapshot<Map<String, dynamic>>> snp;
-  ParentsChildProfileTerm1({required this.snp, super.key, required this.schoolId});
+  ParentsChildProfileTerm1({
+    required this.snp,
+    super.key,
+    required this.schoolId,
+  });
 
   @override
-  State<ParentsChildProfileTerm1> createState() => _ParentsChildProfileState();
+  State<ParentsChildProfileTerm1> createState() =>
+      _ParentsChildProfileState();
 }
 
 class _ParentsChildProfileState extends State<ParentsChildProfileTerm1> {
-   int d1Start = 0, d1End = 0;
+  int d1Start = 0, d1End = 0;
   int d2Start = 0, d2End = 0;
   int c3Start = 0, c3End = 0;
   int c4Start = 0, c4End = 0;
@@ -29,7 +35,10 @@ class _ParentsChildProfileState extends State<ParentsChildProfileTerm1> {
 
   bool gradingLoaded = false;
 
-Future<void> _loadGrading() async {
+  // School logo URL — resolved once and reused for PDF generation.
+  String? _logoUrl;
+
+  Future<void> _loadGrading() async {
     try {
       final doc = await FirebaseFirestore.instance
           .collection('Schools')
@@ -41,33 +50,51 @@ Future<void> _loadGrading() async {
       final data = doc.data()!;
 
       d1Start = data['D1Start'];
-      d1End   = data['D1End'];
+      d1End = data['D1End'];
 
       d2Start = data['D2Start'];
-      d2End   = data['D2End'];
+      d2End = data['D2End'];
 
       c3Start = data['c3Start'];
-      c3End   = data['c3End'];
+      c3End = data['c3End'];
 
       c4Start = data['c4Start'];
-      c4End   = data['c4End'];
+      c4End = data['c4End'];
 
       c5Start = data['c5Start'];
-      c5End   = data['c5End'];
+      c5End = data['c5End'];
 
       c6Start = data['c6Start'];
-      c6End   = data['c6End'];
+      c6End = data['c6End'];
 
       p7Start = data['p7Start'];
-      p7End   = data['p7End'];
+      p7End = data['p7End'];
 
       p8Start = data['p8Start'];
-      p8End   = data['p8End'];
+      p8End = data['p8End'];
 
       f9Start = data['f9Start'];
-      f9End   = data['f9End'];
+      f9End = data['f9End'];
 
+      // ── Resolve the school logo URL once ─────────────────────────────
+      String? resolvedLogo;
+      final storedLogo = data['logoUrl'] as String?;
+      if (storedLogo != null && storedLogo.trim().isNotEmpty) {
+        resolvedLogo = storedLogo.trim();
+      } else {
+        try {
+          resolvedLogo = await FirebaseStorage.instance
+              .ref()
+              .child('schools/${widget.schoolId}/logo.jpg')
+              .getDownloadURL();
+        } catch (_) {
+          resolvedLogo = null;
+        }
+      }
+
+      if (!mounted) return;
       setState(() {
+        _logoUrl = resolvedLogo;
         gradingLoaded = true;
       });
     } catch (e) {
@@ -77,51 +104,71 @@ Future<void> _loadGrading() async {
     }
   }
 
- @override
+  /// Shows the student's profile picture when available, falling back to
+  /// a generic person icon otherwise.
+  Widget _buildProfileAvatar(String? imageUrl) {
+    final hasImage = imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl != 'null' &&
+        imageUrl != 'Not given';
+
+    return CircleAvatar(
+      radius: 40,
+      backgroundColor: Colors.white,
+      backgroundImage: hasImage ? NetworkImage(imageUrl) : null,
+      onBackgroundImageError: hasImage
+          ? (Object exception, StackTrace? stackTrace) {
+              if (kDebugMode) {
+                print('Failed to load profile image: $exception');
+              }
+            }
+          : null,
+      child: !hasImage
+          ? const Icon(Icons.person, size: 60, color: Colors.indigo)
+          : null,
+    );
+  }
+
+  @override
   void initState() {
     super.initState();
-    _loadGrading(); 
-    }
+    _loadGrading();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //    leading: InkWell(child: Icon(Icons.arrow_back_rounded, color: Colors.white,),),
-      //   backgroundColor: mainColor,
-      //   title: Text(schoolname, style: TextStyle(color: Colors.white),),
-      //   centerTitle: true,
-      // ),
-      
-
-      body: StreamBuilder(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: widget.snp,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error'));
+            return const Center(child: Text('Error'));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No students found.'));
           }
 
           final studentDocs = snapshot.data!.docs;
+
           final students = studentDocs
               .map((doc) => StudentModelP4.fromJson(doc.data()))
               .toList();
+
+          // 'image' isn't part of StudentModelP4 → read from raw doc.
+          final imageUrls = studentDocs.map((doc) {
+            final data = doc.data();
+            return data['image'] as String?;
+          }).toList();
 
           return PageView.builder(
             itemCount: students.length,
             itemBuilder: (context, i) {
               final student = students[i];
-              final schoolId = studentDocs[i]
-                  .reference
-                  .parent
-                  .parent
-                  ?.parent
-                  .parent
-                  ?.id;
+              final imageUrl = imageUrls[i];
+
               return SingleChildScrollView(
                 child: Column(
                   children: [
@@ -153,7 +200,7 @@ Future<void> _loadGrading() async {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Class: ${student.classIn}  |  Year: ${DateTime.now().year}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
                                   ),
@@ -161,23 +208,15 @@ Future<void> _loadGrading() async {
                                 const SizedBox(height: 4),
                                 Text(
                                   'SID: ${student.id}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 14,
-                                    color: Colors.white
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              Icons.person,
-                              size: 60,
-                              color: Colors.indigo,
-                            ),
-                          ),
+                          _buildProfileAvatar(imageUrl),
                         ],
                       ),
                     ),
@@ -241,18 +280,26 @@ Future<void> _loadGrading() async {
                                                 score = 'X';
                                               }
                                               return Text(
-                                                // studentId: student.studentName!,
-                                                // subjectName: subject.subjectName,
-                                                // initialScore: subject.scoreBOT,
-                                                // scoreKey: 'scoreBOT', time: 'BOT',
-                                                score.toString(),
+                                                score,
                                                 textAlign: TextAlign.center,
                                               );
                                             },
                                           ),
                                         ),
                                         Text(
-                                          divCalBOT(subject.scoreBOT, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divCalBOT(
+                                            subject.scoreBOT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -268,29 +315,37 @@ Future<void> _loadGrading() async {
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        SizedBox( 
+                                        SizedBox(
                                           width: 80,
                                           height: 40,
                                           child: Builder(
                                             builder: (context) {
-                                               String score = subject.scoreMT
+                                              String score = subject.scoreMT
                                                   .toString();
                                               if (score == '-1.0') {
                                                 score = 'X';
                                               }
                                               return Text(
-                                                // studentId: student.studentName!,
-                                                // subjectName: subject.subjectName,
-                                                // initialScore: subject.scoreMT,
-                                                // scoreKey: 'scoreMT', time: 'MID',
-                                                score.toString(),
+                                                score,
                                                 textAlign: TextAlign.center,
                                               );
-                                            }
+                                            },
                                           ),
                                         ),
                                         Text(
-                                          divCalMid(subject.scoreMT,  d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divCalMid(
+                                            subject.scoreMT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -311,24 +366,32 @@ Future<void> _loadGrading() async {
                                           height: 40,
                                           child: Builder(
                                             builder: (context) {
-                                               String score = subject.scoreEOT
+                                              String score = subject.scoreEOT
                                                   .toString();
                                               if (score == '-1.0') {
                                                 score = 'X';
                                               }
                                               return Text(
-                                                // studentId: student.studentName!,
-                                                // subjectName: subject.subjectName,
-                                                // initialScore: subject.scoreEOT,
-                                                // scoreKey: 'scoreEOT', time: 'END',
-                                                score.toString(),
+                                                score,
                                                 textAlign: TextAlign.center,
                                               );
-                                            }
+                                            },
                                           ),
                                         ),
                                         Text(
-                                          divEND(subject.scoreEOT,d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                          divEND(
+                                            subject.scoreEOT,
+                                            d1Start,
+                                            d2Start,
+                                            c3Start,
+                                            c4Start,
+                                            c5Start,
+                                            c6Start,
+                                            p7Start,
+                                            p8Start,
+                                            f9Start,
+                                            f9End,
+                                          ),
                                           style: const TextStyle(
                                             color: Colors.grey,
                                           ),
@@ -367,7 +430,19 @@ Future<void> _loadGrading() async {
                                 ),
                               ),
                               Text(
-                                gradeEot(student.subjectsScore, d1Start, d2Start, c3Start, c4Start, c5Start, c6Start, p7Start, p8Start, f9Start, f9End),
+                                gradeEot(
+                                  student.subjectsScore,
+                                  d1Start,
+                                  d2Start,
+                                  c3Start,
+                                  c4Start,
+                                  c5Start,
+                                  c6Start,
+                                  p7Start,
+                                  p8Start,
+                                  f9Start,
+                                  f9End,
+                                ),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   color: Colors.indigo,
@@ -377,27 +452,19 @@ Future<void> _loadGrading() async {
                             ],
                           ),
                           FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                            future: schoolId == null
-                                ? null
-                                : FirebaseFirestore.instance
-                                    .collection('Schools')
-                                    .doc(schoolId)
-                                    .get(),
+                            future: FirebaseFirestore.instance
+                                .collection('Schools')
+                                .doc(widget.schoolId)
+                                .get(),
                             builder: (context, schoolSnapshot) {
-                              if (schoolId == null) {
-                                return const Icon(
-                                  Icons.download_rounded,
-                                  size: 30,
-                                  color: Colors.grey,
-                                );
-                              }
-
                               if (schoolSnapshot.connectionState ==
                                   ConnectionState.waiting) {
                                 return const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 );
                               }
 
@@ -446,6 +513,8 @@ Future<void> _loadGrading() async {
                                     pobox: pobox,
                                     email: email,
                                     year: DateTime.now().year,
+                                    imageUrl: imageUrl,
+                                    logoUrl: _logoUrl,
                                   );
                                 },
                               );

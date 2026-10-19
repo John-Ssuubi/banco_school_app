@@ -7,6 +7,7 @@ import 'package:banco_mobile/DataBase/P4/Term%20I/p4_database.dart';
 import 'package:banco_mobile/DataBase/P4/p4_student_model.dart';
 import 'package:banco_mobile/Reports/comments.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -91,9 +92,6 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
   }
 
   // ─── Firestore fetch ────────────────────────────────────────────────────
-  // Returns the school doc, the parsed student models, AND the raw 'image'
-  // field per student (index-aligned with the students list), since
-  // StudentModelP4 doesn't carry the image URL itself.
   Future<Map<String, dynamic>> _fetchData() async {
     final schoolDoc = await FirebaseFirestore.instance
         .collection('Schools')
@@ -144,10 +142,27 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
       imageUrls.add(data['image'] as String?);
     }
 
+    // ── School logo (Firestore first, Storage fallback) ──────────────────
+    String? logoUrl;
+    final storedLogo = schoolDoc.data()?['logoUrl'] as String?;
+    if (storedLogo != null && storedLogo.trim().isNotEmpty) {
+      logoUrl = storedLogo.trim();
+    } else {
+      try {
+        logoUrl = await FirebaseStorage.instance
+            .ref()
+            .child('schools/${widget.schoolId}/logo.jpg')
+            .getDownloadURL();
+      } catch (_) {
+        logoUrl = null;
+      }
+    }
+
     return {
       'school': schoolDoc.data() ?? {},
       'students': students,
       'imageUrls': imageUrls,
+      'logoUrl': logoUrl,
     };
   }
 
@@ -159,7 +174,6 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
   static const _borderColor = PdfColor.fromInt(0xFFB0C4DE);
   static const _textDark = PdfColor.fromInt(0xFF1A1A2E);
 
-  // ─── Build ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
@@ -178,7 +192,6 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
     );
   }
 
-  // ─── Print handler ──────────────────────────────────────────────────────
   Future<void> _onPrint() async {
     try {
       setState(() {
@@ -190,6 +203,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
       final schoolData = fetched['school'] as Map<String, dynamic>;
       final students = fetched['students'] as List<StudentModelP4>;
       final imageUrls = fetched['imageUrls'] as List<String?>;
+      final logoUrl = fetched['logoUrl'] as String?;
 
       if (students.isEmpty) {
         if (mounted) {
@@ -200,11 +214,19 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
         return;
       }
 
+      // Load school logo once, reused on every page.
+      pw.ImageProvider? logoImage;
+      if (logoUrl != null && logoUrl.isNotEmpty) {
+        try {
+          logoImage = await networkImage(logoUrl);
+        } catch (e) {
+          developer.log('Failed to load school logo: $e', name: 'Print');
+          logoImage = null;
+        }
+      }
+
       final doc = pw.Document();
 
-      // Fetch each student's photo (if any) before building their page,
-      // since pw.Page.build is synchronous. Update the button label as
-      // we go so the spinner has a meaningful progress readout.
       for (var i = 0; i < students.length; i++) {
         if (mounted) {
           setState(() {
@@ -231,7 +253,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
           }
         }
 
-        _addStudentPage(doc, students[i], schoolData, studentImage);
+        _addStudentPage(doc, students[i], schoolData, studentImage, logoImage);
       }
 
       if (mounted) {
@@ -243,7 +265,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
       try {
         await Printing.sharePdf(
           bytes: pdfBytes,
-          filename: 'P4_Term_I_Reports.pdf',
+          filename: 'P4 Term I Reports.pdf',
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -298,6 +320,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
     StudentModelP4 student,
     Map<String, dynamic> schoolData,
     pw.ImageProvider? studentImage,
+    pw.ImageProvider? logoImage,
   ) {
     final allSubjects = student.subjectsScore;
     final coreSubjects = allSubjects.length > 4
@@ -436,48 +459,71 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.stretch,
             children: [
+              // ── Header band with school logo ────────────────────────
               pw.Container(
                 decoration: const pw.BoxDecoration(
                   color: _headerBlue,
                   borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
                 ),
                 padding: const pw.EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                child: pw.Column(
+                child: pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
                   children: [
-                    pw.Text(
-                      schoolData['school_name']?.toString().toUpperCase() ?? 'SCHOOL NAME',
-                      style: pw.TextStyle(
-                        color: PdfColors.white,
-                        fontSize: 16,
-                        fontWeight: pw.FontWeight.bold,
-                        letterSpacing: 1.2,
+                    if (logoImage != null) ...[
+                      pw.Container(
+                        width: 56,
+                        height: 56,
+                        padding: const pw.EdgeInsets.all(3),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.white,
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+                        ),
+                        child: pw.Image(logoImage, fit: pw.BoxFit.contain),
                       ),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 3),
-                    pw.Text(
-                      schoolData['moto']?.toString() ?? '',
-                      style: const pw.TextStyle(color: PdfColors.white, fontSize: 9),
-                      textAlign: pw.TextAlign.center,
-                    ),
-                    pw.SizedBox(height: 6),
-                    pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-                      decoration: pw.BoxDecoration(
-                        color: _accentGold,
-                        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                      pw.SizedBox(width: 12),
+                    ],
+                    pw.Expanded(
+                      child: pw.Column(
+                        children: [
+                          pw.Text(
+                            schoolData['school_name']?.toString().toUpperCase() ?? 'SCHOOL NAME',
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 3),
+                          pw.Text(
+                            schoolData['moto']?.toString() ?? '',
+                            style: const pw.TextStyle(color: PdfColors.white, fontSize: 9),
+                            textAlign: pw.TextAlign.center,
+                          ),
+                          pw.SizedBox(height: 6),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                            decoration: pw.BoxDecoration(
+                              color: _accentGold,
+                              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                            ),
+                            child: pw.Text(
+                              'TERM I PROGRESS REPORT ${DateTime.now().year}',
+                              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _textDark),
+                            ),
+                          ),
+                        ],
                       ),
-                      child: pw.Text(
-                        'TERM I PROGRESS REPORT ${DateTime.now().year}',
-                        style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _textDark),
-                      ),
                     ),
+                    if (logoImage != null) pw.SizedBox(width: 68),
                   ],
                 ),
               ),
 
               pw.SizedBox(height: 10),
 
+              // ── Student info card ────────────────────────────────────
               pw.Container(
                 decoration: pw.BoxDecoration(
                   border: pw.Border.all(color: _borderColor),
@@ -498,7 +544,6 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
                         ],
                       ),
                     ),
-                    // ── Student Photo ─────────────────────────────────
                     pw.Container(
                       width: 70,
                       height: 70,
@@ -696,7 +741,6 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
   }
 
   // ─── Small layout helpers ───────────────────────────────────────────────
-
   pw.Widget _infoRow(String label, String value) => pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 2),
     child: pw.RichText(
@@ -766,7 +810,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
         style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: _textDark),
         textAlign: pw.TextAlign.center,
       ),
-    );  
+    );
   }
 
   pw.Widget _signatureBlock(String role) => pw.Column(
@@ -774,7 +818,7 @@ class _BulkPrintP4T3State extends State<BulkPrintP4> {
     children: [
       pw.Text(role, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8.5, color: _headerBlue)),
       pw.SizedBox(height: 24),
-      pw.Container(width: 140 , height: 0.8, color: _borderColor),
+      pw.Container(width: 140, height: 0.8, color: _borderColor),
       pw.SizedBox(height: 3),
       pw.Text('Signature', style: const pw.TextStyle(fontSize: 7, color: _borderColor)),
     ],
